@@ -1,6 +1,14 @@
 import numpy as np
 
-def create_block_sdf(model_name : str, size : np.ndarray, mass : float = 1, pose : np.ndarray = [0, 0, 0, 0, 0, 0]) -> str:
+def create_block_sdf(
+        model_name : str, 
+        size : np.ndarray, 
+        mass : float = 1, 
+        pose : np.ndarray = [0, 0, 0, 0, 0, 0],
+        rgba : np.ndarray = [1, 1, 1, 1]
+) -> str:
+
+
     assert len(pose) == 6, "pose must be 6d"
     assert len(size) == 3, "size must be 3d"
 
@@ -40,7 +48,7 @@ f"""<?xml version="1.0"?>
           </box>
         </geometry>
         <material>
-          <diffuse>1.0 1.0 1.0 1.0</diffuse>
+          <diffuse>{" ".join(str(num) for num in rgba)}</diffuse>
         </material>
       </visual>
     </link>
@@ -49,7 +57,18 @@ f"""<?xml version="1.0"?>
 """)
 
 
+# I want blocks to be 10 x (10 + 2i) x 8 cm
 for i in range(11):
-    size = 0.01 * i # i cm     
+    w = min(0.06 + 0.01 * i, 0.1) # i think 10cm is about our max gripper width
+    l = 0.1 + 0.02 * i # 10 + i cm   
+    h = 0.06 
     with open(f"assets/block{i}.sdf", "w+") as f:
-        f.write(create_block_sdf(f"block{i}", [size, size, size]))
+        f.write(create_block_sdf(f"block{i}", [w, l, h], rgba=np.array([197, 152, 214, 255]) / 255))
+
+# I want a floor
+with open("assets/floor.sdf", "w+") as f:
+    f.write(create_block_sdf("floor", [3, 3, 0.1], rgba=[0.1, 0.1, 0.1, 1]))
+
+# I want a platform to stack on
+with open("assets/platform.sdf", "w+") as f:
+    f.write(create_block_sdf("platform", [0.5, 0.5, 0.05]))

@@ -6,29 +6,29 @@
       <inertial>
         <mass>1</mass>
         <inertia>
-          <ixx>0.15916543100357267</ixx>
+          <ixx>0.13500258058747125</ixx>
           <ixy>0.0</ixy>
           <ixz>0.0</ixz>
-          <iyy>0.15916543100357267</iyy>
+          <iyy>0.13956870463579432</iyy>
           <iyz>0.0</iyz>
-          <izz>0.15916543100357267</izz>
+          <izz>0.13379230185272217</izz>
         </inertia>
       </inertial>
       <collision name="collision">
         <geometry>
           <box>
-            <size> 0.01 0.01 0.01 </size>
+            <size> 0.06999999999999999 0.12000000000000001 0.06 </size>
           </box>
         </geometry>
       </collision>
       <visual name="visual">
         <geometry>
           <box>
-            <size> 0.01 0.01 0.01 </size>
+            <size> 0.06999999999999999 0.12000000000000001 0.06 </size>
           </box>
         </geometry>
         <material>
-          <diffuse>1.0 1.0 1.0 1.0</diffuse>
+          <diffuse>0.7725490196078432 0.596078431372549 0.8392156862745098 1.0</diffuse>
         </material>
       </visual>
     </link>

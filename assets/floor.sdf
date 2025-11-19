@@ -1,34 +1,34 @@
 <?xml version="1.0"?>
 <sdf version="1.7">
-  <model name="block8">
+  <model name="floor">
     <pose> 0 0 0 0 0 0 </pose>
-    <link name="block8_link">
+    <link name="floor_link">
       <inertial>
         <mass>1</mass>
         <inertia>
-          <ixx>0.12909945708435103</ixx>
+          <ixx>2.3161940195603568</ixx>
           <ixy>0.0</ixy>
           <ixz>0.0</ixz>
-          <iyy>0.13658351124562848</iyy>
+          <iyy>2.3161940195603568</iyy>
           <iyz>0.0</iyz>
-          <izz>0.12490398495943615</izz>
+          <izz>4.5</izz>
         </inertia>
       </inertial>
       <collision name="collision">
         <geometry>
           <box>
-            <size> 0.1 0.26 0.06 </size>
+            <size> 3 3 0.1 </size>
           </box>
         </geometry>
       </collision>
       <visual name="visual">
         <geometry>
           <box>
-            <size> 0.1 0.26 0.06 </size>
+            <size> 3 3 0.1 </size>
           </box>
         </geometry>
         <material>
-          <diffuse>0.7725490196078432 0.596078431372549 0.8392156862745098 1.0</diffuse>
+          <diffuse>0.1 0.1 0.1 1</diffuse>
         </material>
       </visual>
     </link>
