@@ -29,6 +29,11 @@ def randomize_blocks(blocks : list[str], plant, plant_context):
         )
 
 def save_context(context : Context, filename : str):
+    """
+    e.g.
+    context = simulator.get_context()
+    save_context(context, "../assets/contexts/filename.npz")
+    """
     time = context.get_time()
     xc = context.get_continuous_state_vector().CopyToVector()
     xd = context.get_discrete_state(0).CopyToVector()
@@ -36,6 +41,12 @@ def save_context(context : Context, filename : str):
     np.savez(filename, time=time, xc=xc, xd=xd)
 
 def load_context(context : Context, filename : str):
+    """
+    e.g.
+    context = diagram.CreateDefaultContext()
+    load_context(context, "../assets/contexts/filename.npz")
+    simulator = Simulator(diagram, context)
+    """
     with np.load(filename) as data:
         time = data["time"]
         xc = data["xc"]
