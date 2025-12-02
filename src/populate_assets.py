@@ -59,7 +59,7 @@ f"""<?xml version="1.0"?>
 
 # I want blocks to be 10 x (10 + 2i) x 8 cm
 for i in range(11):
-    w = min(0.06 + 0.01 * i, 0.1) # i think 10cm is about our max gripper width
+    w = 0.1 # i think 10cm is about our max gripper width
     l = 0.1 + 0.02 * i # 10 + i cm   
     h = 0.06 
     with open(f"assets/block{i}.sdf", "w+") as f:
