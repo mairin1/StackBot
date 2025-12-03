@@ -2,7 +2,9 @@ import numpy as np
 from pydrake.all import (
     RotationMatrix,
     RigidTransform,
-    MultibodyPlant
+    MultibodyPlant,
+    FixedOffsetFrame,
+    PlanarJoint
 )
 
 from pydrake.systems.framework import Context
@@ -27,6 +29,7 @@ def randomize_blocks(blocks : list[str], plant, plant_context):
             body,
             RigidTransform(rotation, position)
         )
+        
 
 def save_context(context : Context, filename : str):
     """
