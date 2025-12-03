@@ -56,7 +56,6 @@ f"""<?xml version="1.0"?>
 </sdf>
 """)
 
-
 # I want blocks to be 10 x (10 + 2i) x 8 cm
 for i in range(11):
     w = 0.1 # i think 10cm is about our max gripper width
