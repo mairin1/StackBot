@@ -28,7 +28,7 @@
           </box>
         </geometry>
         <material>
-          <diffuse>0.7725490196078432 0.596078431372549 0.8392156862745098 1.0</diffuse>
+          <diffuse>0.0 1.0 0.0 1.0</diffuse>
         </material>
       </visual>
     </link>
