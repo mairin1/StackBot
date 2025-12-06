@@ -1,7 +1,6 @@
 import numpy as np
 from pydrake.all import (
     BasicVector,
-    JacobianWrtVariable,
     LeafSystem,
     PiecewisePolynomial,
     PiecewisePose,
@@ -72,6 +71,7 @@ class TrajectoryCommander(LeafSystem):
         self._V_traj = None
         self._wsg_traj = None
         self._dt_fd = float(dt_fd)
+        self._t0 = 0.0 # time offset
 
         self.DeclareVectorOutputPort("V_WG_des", BasicVector(6), self._calc_V)
         self.DeclareVectorOutputPort("wsg_position", BasicVector(1), self._calc_wsg)
@@ -86,6 +86,9 @@ class TrajectoryCommander(LeafSystem):
             except Exception:
                 self._V_traj = None
 
+    def set_time_offset(self, t0: float):
+        self._t0 = float(t0)
+
     def end_time(self) -> float:
         if self._pose_traj is None:
             return 0.0
@@ -95,7 +98,7 @@ class TrajectoryCommander(LeafSystem):
         if self._wsg_traj is None:
             output.SetFromVector([0.0])
             return
-        t = context.get_time()
+        t = context.get_time() - self._t0
         v = np.asarray(self._wsg_traj.value(t)).reshape(-1)
         output.SetFromVector([float(v[0])])
 
@@ -103,7 +106,7 @@ class TrajectoryCommander(LeafSystem):
         if self._pose_traj is None:
             output.SetFromVector(np.zeros(6))
             return
-        t = float(context.get_time())
+        t = float(context.get_time()) - self._t0
         v = np.asarray(self._V_traj.value(t)).reshape(-1) # type: ignore
         output.SetFromVector(v[:6])
 
@@ -178,3 +181,90 @@ def make_pick_trajectories(X_WG_initial: RigidTransform,
     wsg_source = TrajectorySource(wsg_traj)
 
     return pose_traj, V_source, use_derivative_source, wsg_source, wsg_traj
+
+def make_pick_and_place_trajectories(
+        X_WG_initial: RigidTransform,
+        X_WG_pre_pick: RigidTransform,
+        X_WG_pick: RigidTransform,
+        place_xy: np.ndarray,
+        place_z: float,
+        lift_distance: float = 0.5, 
+        approach_clearance: float = 0.12
+):
+    """ 
+    Build a single trajectory that:
+        1) Starts from X_WG_initial
+        2) Goes to pre-pick, then pick, closes, lifts
+        3) Moves to pre-place over (place_xy, place_z), then down to place
+        4) Opens gripper, retreats to pre-place
+        5) Returns to X_WG_initial
+    """
+    place_xy = np.asarray(place_xy, dtype=float).reshape(2)
+
+    p_lift = X_WG_pick.translation().copy()
+    p_lift[2] += float(lift_distance)
+    X_WG_lift = RigidTransform(X_WG_pick.rotation(), p_lift)
+
+    R_place = X_WG_pick.rotation()
+    p_place = np.array([place_xy[0], place_xy[1], place_z], dtype=float)
+    X_WG_place = RigidTransform(R_place, p_place)
+    X_WG_pre_place = RigidTransform(R_place, p_place + np.array([0.0, 0.0, approach_clearance], dtype=float))
+
+    X_WG_final = X_WG_initial
+
+    Xs = [
+        X_WG_initial,   # t0: start
+        X_WG_pre_pick,  # t1: pre-pick
+        X_WG_pick,      # t2: descend to pick
+        X_WG_pick,      # t3: close fingers
+        X_WG_pick,      # t3.5: pause with closed fingers
+        X_WG_lift,      # t4: lift up
+        X_WG_pre_place, # t5: move above place
+        X_WG_place,     # t6: descend to place
+        X_WG_place,     # t7: open fingers
+        X_WG_pre_place, # t8: retreat up
+        X_WG_final,     # t9: go back home
+    ]
+
+    delta_ts = [
+        0, # initial
+        3, # pre-pick
+        3, # pick
+        2, # pause
+        3, # close
+        5, # lift
+        3, # pre-place
+        3, # place
+        1, # open
+        2, # retreat
+        3  # home
+    ]
+    num_ts = len(delta_ts)
+    ts = []
+    count = 0
+    for i in range(num_ts):
+        count += delta_ts[i]
+        ts.append(count)
+
+    pose_traj = PiecewisePose.MakeLinear(ts, Xs)
+
+    opened = 0.2
+    closed = 0
+    finger = np.array([[
+        opened,  # t0
+        opened,  # t1
+        closed,  # t2
+        closed,  # t3 (close)
+        closed,  # t3.5 (close)
+        closed,  # t4
+        closed,  # t5
+        closed,  # t6 (still closed at contact)
+        opened,  # t7 (open to release)
+        opened,  # t8
+        opened,  # t9
+    ]])
+
+    wsg_traj = PiecewisePolynomial.FirstOrderHold(ts, finger)
+    wsg_source = TrajectorySource(wsg_traj)
+
+    return pose_traj, wsg_source, wsg_traj

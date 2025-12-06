@@ -100,7 +100,7 @@ def generate_model_point_cloud(block_idx: int):
     print(f"Loaded model mesh from {block_mesh_path}, sampled {sampled_pts.shape[0]} points")
     return block_model_cloud
 
-def pick_block(block_idx: int, plant, plant_context, diagram, diagram_context, meshcat, pc_systems):
+def pick_block(block_idx: int, plant, plant_context, diagram, diagram_context, meshcat, pc_systems, place_xy: np.ndarray, place_z: float):
     """
     Pipeline for pick + placing one block. 
     System currently half-cheats for perception (identifying blocks using their true pose).
@@ -141,8 +141,15 @@ def pick_block(block_idx: int, plant, plant_context, diagram, diagram_context, m
     X_WG_initial = plant.EvalBodyPoseInWorld(plant_context, ee_body)
 
     # trajectories
-    pose_traj, V_source, use_derivative_source, wsg_source, wsg_traj = make_pick_trajectories(
-        X_WG_initial, X_WG_pre, X_WG_pick
+    # pose_traj, V_source, use_derivative_source, wsg_source, wsg_traj = make_pick_trajectories(
+    #     X_WG_initial, X_WG_pre, X_WG_pick
+    # )
+    pose_traj, wsg_source, wsg_traj = make_pick_and_place_trajectories(
+        X_WG_initial=X_WG_initial, 
+        X_WG_pre_pick=X_WG_pre,
+        X_WG_pick=X_WG_pick,
+        place_xy=place_xy,
+        place_z=place_z,
     )
     return pose_traj, wsg_traj
 
@@ -158,22 +165,24 @@ def main():
     blocks = [f"block{i}" for i in range(1, NUM_BLOCKS + 1)]
     plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
-    randomize_blocks_near_kuka(blocks, plant, plant_context)
+    rng = np.random.default_rng(1234)
+    randomize_blocks_near_kuka(blocks, plant, plant_context, rng=rng)
 
     # publish once so camera clouds exist
     diagram.ForcedPublish(diagram_context)
 
     input("enter to continue")
 
-    # plan using perception
-    pose_traj, wsg_traj = pick_block(
-        1, plant, plant_context, diagram, diagram_context, meshcat, pc_systems
-    )
+    # computing platofrm
+    platform_inst = plant.GetModelInstanceByName("platform")
+    platform_body = plant.GetBodyByName("platform_link", platform_inst)
+    X_WPlat = plant.EvalBodyPoseInWorld(plant_context, platform_body)
+    p_WPlat = X_WPlat.translation()
 
-    print("wsg_traj: ", wsg_traj)
-
-    # set trajectories into commander
-    commander.set_trajectories(pose_traj, wsg_traj)
+    # place at platform center, at the first layer height
+    place_xy = p_WPlat[:2]
+    platform_half_h = 0.05 / 2.0  # from create_block_sdf for platform
+    block_h = BLOCK_HEIGHT
 
     # initialize integrator state to current measured q
     station_context = diagram.GetMutableSubsystemContext(station, diagram_context)
@@ -185,14 +194,29 @@ def main():
     simulator = Simulator(diagram, diagram_context)
 
     meshcat.StartRecording()
-    if running_as_notebook:
-        simulator.set_target_realtime_rate(1.0)
+    current_time = simulator.get_context().get_time()
 
-    sim_end = commander.end_time()
-    if sim_end <= 0:
-        raise RuntimeError("Commander has no trajectory (end_time <= 0).")
+    for stack_level in range(NUM_BLOCKS):
+        print("platform_half_h = ", platform_half_h)
+        print("block_h = ", block_h)
+        place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h
 
-    simulator.AdvanceTo(sim_end)
+        # plan using perception
+        pose_traj, wsg_traj = pick_block(
+            stack_level + 1, plant, plant_context, diagram, diagram_context, meshcat, pc_systems, place_xy, place_z
+        )
+        print("place_z: ", place_z)
+
+        # set trajectories into commander
+        commander.set_trajectories(pose_traj, wsg_traj)
+        commander.set_time_offset(current_time)
+
+        # run just long enough to finish this block's motion
+        T_block = pose_traj.end_time()
+        block_end_global = current_time + T_block
+        simulator.AdvanceTo(block_end_global)
+        current_time = block_end_global
+
     meshcat.StopRecording()
     meshcat.PublishRecording()
 

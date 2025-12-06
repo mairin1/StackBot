@@ -93,7 +93,7 @@ def generate_blocks():
         h = BLOCK_HEIGHT
         size = np.array([w, l, h])
         with open(f"assets/models/block{i}.sdf", "w+") as f:
-            f.write(create_block_sdf(f"block{i}", size, rgba=BLOCK_COLOR_RGBA, mu_static=10, mu_dynamic=8))
+            f.write(create_block_sdf(f"block{i}", size, rgba=BLOCK_COLOR_RGBA, mu_static=20, mu_dynamic=15))
         _export_box_obj(assets_dir / f"block{i}.obj", size)
 
     # I want a floor
