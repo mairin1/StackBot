@@ -1,8 +1,8 @@
 directives:
 - add_directives:
-    file: file:///workspaces/StackBot/directives/bimanual_IIWA14_stackbot_and_assets.dmd.yaml
+    file: file:///Users/mairinoshaughnessy/Documents/6.4210/StackBot/directives/bimanual_IIWA14_stackbot_and_assets.dmd.yaml
 - add_directives:
-    file: file:///workspaces/StackBot/directives/camera_directives.dmd.yaml
+    file: file:///Users/mairinoshaughnessy/Documents/6.4210/StackBot/directives/camera_directives.dmd.yaml
 
 cameras:
     camera0:
