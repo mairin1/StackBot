@@ -75,10 +75,15 @@ def clusters_to_point_clouds(dbscan_obj, points, meshcat, display=True):
 
 # calculate approximate midpoint of the block
 def calc_translation(pointCloud):
+    # blocks are 0.06 m tall - cut off zs lower than the midpoint of the block
     points = pointCloud.xyzs()
     xyz = np.zeros(3)
-    for i in range(3):
-        xyz[i] = np.average(points[i])
+    zs = points[2]
+    cut_off_lower_zs = lambda z: z > 0.03
+    mask = cut_off_lower_zs(zs)
+    for i in range(2):
+        xyz[i] = np.average(points[i][mask])
+    xyz[2] = np.average(points[2])
     return xyz
 
 def calculate_all_translations(block_pcs, meshcat, display=True):
@@ -89,8 +94,8 @@ def calculate_all_translations(block_pcs, meshcat, display=True):
     if display:
         display_pc = PointCloud(len(translations))
         display_pc.mutable_xyzs()[:] = translations.T
-        # TODO: it should be a sphere but i will fix that later :)))
-        meshcat.SetObject("midpoints", display_pc, point_size=0.5, rgba=Rgba(0, 1, 1, 1))
+        # TODO: it should be a sphere but i will fix that later if we want to display :)))
+        # meshcat.SetObject("midpoints", display_pc, point_size=0.5, rgba=Rgba(0, 1, 1, 1))
     return translations
 
 def euclidean_dist(xyz1, xyz2):
