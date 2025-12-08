@@ -85,3 +85,7 @@ with open(f"{folder}/floor.sdf", "w+") as f:
 # I want a platform to stack on
 with open(f"{folder}/platform.sdf", "w+") as f:
     f.write(create_block_sdf("platform", [0.5, 0.5, 0.05]))
+
+# I want an iiwa probe
+with open(f"{folder}/probe.sdf", "w+") as f:
+    f.write(create_block_sdf("probe", [0.02, 0.02, 0.2]))

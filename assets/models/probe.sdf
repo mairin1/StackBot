@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="probe">
+    <pose> 0 0 0 0 0 0 </pose>
+    <link name="probe_link">
+      <inertial>
+        <mass>1</mass>
+        <inertia>
+          <ixx>0.13746014165949014</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.13746014165949014</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.15412367270603103</izz>
+        </inertia>
+      </inertial>
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size> 0.02 0.02 0.2 </size>
+          </box>
+        </geometry>
+        <surface>
+            <friction>
+                <ode>
+                    <mu>2.0</mu>
+                    <mu2>1.5</mu2>
+                </ode>
+            </friction>
+        </surface>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box>
+            <size> 0.02 0.02 0.2 </size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>1 1 1 1</diffuse>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
