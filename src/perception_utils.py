@@ -21,7 +21,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import MinMaxScaler
 
 block_color = np.array([0, 255, 0])
-
+eps = np.array([100, 150, 150])
 
 """
 Given a point cloud with rgbs and xyzs, returns a new point cloud of
@@ -40,7 +40,6 @@ def isolate_blocks_by_color(point_cloud: PointCloud, color: np.array, eps: np.ar
 
     new_pc = PointCloud(new_size=filtered_xyzs.shape[1])
     new_pc.mutable_xyzs()[:] = filtered_xyzs
-    print(filtered_xyzs.shape)
 
     return new_pc
 
@@ -65,7 +64,7 @@ def clusters_to_point_clouds(dbscan_obj, points, meshcat, display=True):
         
         pc = PointCloud(new_size=points_in_cluster_n.shape[0])
         pc.mutable_xyzs()[:] = points_in_cluster_n.T
-        pcs.append(pcs)
+        pcs.append(pc)
 
         if display:
             color = Rgba(np.random.rand(), np.random.rand(), np.random.rand())
@@ -109,9 +108,6 @@ def estimate_block_length(block_pc):
     # ignore z values for now
     sideA = euclidean_dist(corner1[:2], corner2[:2])
     sideB = euclidean_dist(corner3[:2], corner4[:2])
-    # TODO: what is best metric for this?
-    # ideas: max to deal with incomplete point clouds
-    # average
     return max(sideA, sideB)
 
 def estimate_block_lengths(block_pt_clouds):
@@ -144,3 +140,47 @@ def calc_rotation(block_pc):
     dy, dx = slopes[best_slope_ind][1], slopes[best_slope_ind][2]
     angle_from_z = np.pi/2 - np.arctan2(dy, dx)
     return angle_from_z
+
+def calc_all_rotations(block_pcs):
+    rotations = np.zeros((len(block_pcs), 1))
+    for i, block_pc in enumerate(block_pcs):
+        rot = calc_rotation(block_pc)
+        rotations[i] = rot
+    return rotations
+
+
+def compute_X_WB_poses(translations, rotations):
+    assert(len(translations) == len(rotations))
+    n = len(translations)
+    poses = []
+    for i in range(n):
+        rotation = RotationMatrix.MakeZRotation(rotations[i])
+        X_WB = RigidTransform(rotation, translations[i])
+        poses.append(X_WB)
+    return poses
+
+def perceive(point_cloud: PointCloud, meshcat):
+    # crop out table, iiwa, platform
+    cropped_pc = isolate_blocks_by_color(point_cloud, block_color, eps=eps)
+    # # Visualize the point cloud
+    # meshcat.SetObject(
+    #     "cropped_point_cloud", cropped_pc, point_size=0.05, rgba=Rgba(1, 0, 0)
+    # )
+
+    # use DBSCAN to isolate each block as its own point cloud
+    clusters = dbscan(0.04, 6, cropped_pc.xyzs())
+    block_pt_clouds = clusters_to_point_clouds(clusters, cropped_pc.xyzs(), meshcat)
+
+    # calculate translation, rotation, and length estimates
+    translations = calculate_all_translations(block_pt_clouds, meshcat, display=False)
+    rotations = calc_all_rotations(block_pt_clouds)
+    estimated_lengths = estimate_block_lengths(block_pt_clouds)
+
+    # calculate poses, then sort blocks by length
+    X_WBs = compute_X_WB_poses(translations, rotations)
+    X_WBs_by_length = list(zip(X_WBs, estimated_lengths))
+    # sort in descending order of length
+    X_WBs_by_length.sort(key=lambda block: block[1])
+    X_WBs_by_length.reverse()
+
+    return X_WBs_by_length
