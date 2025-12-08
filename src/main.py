@@ -40,7 +40,8 @@ def generate_setup():
     meshcat = StartMeshcat()
     print("Click the link above to open Meshcat in your browser!")
 
-    generate_blocks()
+    # generate_blocks()
+
     create_camera_directives()
     generate_directives_yaml(NUM_BLOCKS)
     generate_scenario_yaml()
@@ -128,7 +129,7 @@ def pick_block(block_idx: int, estimated_X_WBs, plant, plant_context, diagram, d
     # X_WB_hat = estimate_pose_pca(block_cloud)
     X_WB_hat = estimated_X_WBs[block_idx-1][0]
     # extents_hat, _, _ = estimate_extents_along_axes(block_cloud, X_WB_hat)
-    extents_hat = 0.1, estimated_X_WBs[block_idx-1][1], 0.06
+    extents_hat = 0.08, estimated_X_WBs[block_idx-1][1], 0.06
     print("Estimated extents:", extents_hat)
 
     # compare to truth (sanity check)
@@ -199,7 +200,7 @@ def main():
 
 
     simulator = Simulator(diagram, diagram_context)
-    
+
     point_cloud = get_point_cloud_from_cameras(diagram, diagram_context)
     est_X_WBs_by_length = perceive(point_cloud, meshcat)
 

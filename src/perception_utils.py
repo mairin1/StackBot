@@ -145,7 +145,7 @@ def calc_rotation(block_pc):
     else:
         dy = sideB[1][1]
         dx = sideB[1][2]
-    angle_from_z = (np.pi/2 - np.arctan2(dy, dx)) % np.pi
+    angle_from_z = np.pi/2 + np.arctan2(dy, dx)
     return angle_from_z
 
 def calc_all_rotations(block_pcs):
