@@ -6,18 +6,18 @@
       <inertial>
         <mass>1</mass>
         <inertia>
-          <ixx>0.7508333333333334</ixx>
+          <ixx>2.3161940195603568</ixx>
           <ixy>0.0</ixy>
           <ixz>0.0</ixz>
-          <iyy>0.7508333333333334</iyy>
+          <iyy>2.3161940195603568</iyy>
           <iyz>0.0</iyz>
-          <izz>1.5</izz>
+          <izz>4.5</izz>
         </inertia>
       </inertial>
       <collision name="collision">
         <geometry>
           <box>
-            <size> 3.0 3.0 0.1 </size>
+            <size> 3 3 0.1 </size>
           </box>
         </geometry>
         <surface>
@@ -32,11 +32,11 @@
       <visual name="visual">
         <geometry>
           <box>
-            <size> 3.0 3.0 0.1 </size>
+            <size> 3 3 0.1 </size>
           </box>
         </geometry>
         <material>
-          <diffuse>0.1 0.1 0.1 1.0</diffuse>
+          <diffuse>0.1 0.1 0.1 1</diffuse>
         </material>
       </visual>
     </link>

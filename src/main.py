@@ -24,7 +24,7 @@ from manipulation import running_as_notebook
 
 from constants import *
 from scene_utils import *
-from perception_utils import *
+from src.perception_utils_old import *
 from planning_utils import *
 from diff_ik import PseudoInverseDiffIK
 
