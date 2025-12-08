@@ -33,17 +33,21 @@ def create_randomized_block_directives(block_names : list[str]) -> str:
     directives = ""
 
     def sample_point():
-        """
-        sample a point on the xy plane such that |x|, |y| > inner_d, |x|, |y| < outer_d
-        (think concentric squares)
-        """
-        inner_d = 0.2
-        outer_d = 0.8
+        # must be within 0.8m of the iiwa
+        r = np.random.uniform(0.35, 0.8)
+        theta = np.random.uniform(0, np.pi) # i only want it to be in the positive y side
+        
+        x = r * np.cos(theta)
+        y = r * np.sin(theta) - 0.5 # iiwa offset from center
 
-        x, y = np.random.uniform(low=inner_d, high=outer_d, size=2) * np.random.choice([-1, 1], size=2)
+        # must not be in the 0.5 x 0.5 center square
+        avoid = 0.3
+        if -avoid < x < avoid and -avoid < y < avoid:
+            return sample_point()
+
         return x, y
 
-    def sample_points(n : int, reject_dist = 0.3, num_retries = 100):
+    def sample_points(n : int, reject_dist = 0.3, num_retries = 1000):
         d_squared = reject_dist ** 2
 
         for _ in range(num_retries):
@@ -55,6 +59,7 @@ def create_randomized_block_directives(block_names : list[str]) -> str:
                 points.append((x, y))
             
             if len(points) == n:
+                print("placing blocks at points:", points)
                 return points
         
         raise Exception("Exceeded max retries")
@@ -170,7 +175,7 @@ directives:
         parent: world
         child: floor::floor_link
         X_PC:
-            translation: [0, 0, -0.05]
+            translation: [0, -0.1, -0.05]
     - add_model:
         name: platform
         file: package://stackbot/platform.sdf

@@ -42,7 +42,7 @@ def generate_setup():
 
     # generate_blocks()
 
-    block_numbers = np.random.choice(range(11), size=np.random.randint(4, 7), replace=False)
+    block_numbers = np.random.choice(range(11), size=np.random.choice([4, 5, 6]), replace=False)
     print("This scenario uses blocks:", block_numbers)
     blocks = [f"block{i}" for i in block_numbers]
 

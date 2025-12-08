@@ -9,15 +9,15 @@
           <ixx>0.13367097915246975</ixx>
           <ixy>0.0</ixy>
           <ixz>0.0</ixz>
-          <iyy>0.1384767666523493</iyy>
+          <iyy>0.1407789833705434</iyy>
           <iyz>0.0</iyz>
-          <izz>0.13136876243427562</izz>
+          <izz>0.13367097915246975</izz>
         </inertia>
       </inertial>
       <collision name="collision">
         <geometry>
           <box>
-            <size> 0.08 0.14 0.06 </size>
+            <size> 0.06 0.14 0.06 </size>
           </box>
         </geometry>
         <surface>
@@ -32,7 +32,7 @@
       <visual name="visual">
         <geometry>
           <box>
-            <size> 0.08 0.14 0.06 </size>
+            <size> 0.06 0.14 0.06 </size>
           </box>
         </geometry>
         <material>
