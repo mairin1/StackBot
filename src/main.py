@@ -24,7 +24,7 @@ from manipulation import running_as_notebook
 
 from constants import *
 from scene_utils import *
-from src.perception_utils_old import *
+from perception_utils import *
 from planning_utils import *
 from diff_ik import PseudoInverseDiffIK
 
@@ -58,6 +58,10 @@ def generate_setup():
     builder = DiagramBuilder()
     builder.AddSystem(station)
     pc_systems = AddPointClouds(scenario=scenario, station=station, builder=builder)
+
+    builder.ExportOutput(pc_systems["camera0"].get_output_port(), "camera0_point_cloud")
+    builder.ExportOutput(pc_systems["camera1"].get_output_port(), "camera1_point_cloud")
+    builder.ExportOutput(pc_systems["camera2"].get_output_port(), "camera2_point_cloud")
 
     plant = station.GetSubsystemByName("plant")
 
@@ -100,7 +104,7 @@ def generate_model_point_cloud(block_idx: int):
     print(f"Loaded model mesh from {block_mesh_path}, sampled {sampled_pts.shape[0]} points")
     return block_model_cloud
 
-def pick_block(block_idx: int, plant, plant_context, diagram, diagram_context, meshcat, pc_systems, place_xy: np.ndarray, place_z: float):
+def pick_block(block_idx: int, estimated_X_WBs, plant, plant_context, diagram, diagram_context, meshcat, pc_systems, place_xy: np.ndarray, place_z: float):
     """
     Pipeline for pick + placing one block. 
     System currently half-cheats for perception (identifying blocks using their true pose).
@@ -113,16 +117,18 @@ def pick_block(block_idx: int, plant, plant_context, diagram, diagram_context, m
     X_WB_true = plant.EvalBodyPoseInWorld(plant_context, block_body)
 
     # perception crop + merge
-    block_cloud = preprocess_block_cloud(
-        diagram, diagram_context, X_WB_true, pc_systems
-    )
+    # block_cloud = preprocess_block_cloud(
+    #     diagram, diagram_context, X_WB_true, pc_systems
+    # )
 
     # visualize crop box + cloud
-    meshcat.SetObject("block_cloud", block_cloud, point_size=0.01, rgba=Rgba(1, 0, 0))
+    # meshcat.SetObject("block_cloud", block_cloud, point_size=0.01, rgba=Rgba(1, 0, 0))
 
     # estimate pose from perception
-    X_WB_hat = estimate_pose_pca(block_cloud)
-    extents_hat, _, _ = estimate_extents_along_axes(block_cloud, X_WB_hat)
+    # X_WB_hat = estimate_pose_pca(block_cloud)
+    X_WB_hat = estimated_X_WBs[block_idx-1][0]
+    # extents_hat, _, _ = estimate_extents_along_axes(block_cloud, X_WB_hat)
+    extents_hat = 0.1, estimated_X_WBs[block_idx-1][1], 0.06
     print("Estimated extents:", extents_hat)
 
     # compare to truth (sanity check)
@@ -191,10 +197,15 @@ def main():
     integrator_context = diagram.GetMutableSubsystemContext(integrator, diagram_context)
     integrator.set_integral_value(integrator_context, q_meas)
 
+
     simulator = Simulator(diagram, diagram_context)
+    
+    point_cloud = get_point_cloud_from_cameras(diagram, diagram_context)
+    est_X_WBs_by_length = perceive(point_cloud, meshcat)
 
     meshcat.StartRecording()
     current_time = simulator.get_context().get_time()
+
 
     for stack_level in range(NUM_BLOCKS):
         print("platform_half_h = ", platform_half_h)
@@ -203,7 +214,12 @@ def main():
 
         # plan using perception
         pose_traj, wsg_traj = pick_block(
-            stack_level + 1, plant, plant_context, diagram, diagram_context, meshcat, pc_systems, place_xy, place_z
+            stack_level + 1,
+            est_X_WBs_by_length,
+            plant, plant_context,
+            diagram, diagram_context,
+            meshcat, pc_systems,
+            place_xy, place_z
         )
         print("place_z: ", place_z)
 

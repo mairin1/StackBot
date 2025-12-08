@@ -111,7 +111,7 @@ def create_camera_directives() -> None:
     X_PF:
         base_frame: world
         rotation: !Rpy { deg: [-120.0, 0.0, 180.0]}
-        translation: [0, 0.8, 0.5]
+        translation: [0, 1.0, 0.8]
 
 - add_model:
     name: camera0
@@ -126,7 +126,7 @@ def create_camera_directives() -> None:
     X_PF:
         base_frame: world
         rotation: !Rpy { deg: [-125, 0.0, 90.0]}
-        translation: [0.8, 0.1, 0.5]
+        translation: [1.0, 0.1, 0.8]
 
 - add_model:
     name: camera1
@@ -141,7 +141,7 @@ def create_camera_directives() -> None:
     X_PF:
         base_frame: world
         rotation: !Rpy { deg: [-120.0, 0.0, -90.0]}
-        translation: [-0.8, 0.1, 0.5]
+        translation: [-1.0, 0.1, 0.8]
 
 - add_model:
     name: camera2

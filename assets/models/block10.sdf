@@ -6,12 +6,12 @@
       <inertial>
         <mass>1</mass>
         <inertia>
-          <ixx>0.12845993351326745</ixx>
+          <ixx>0.007800000000000002</ixx>
           <ixy>0.0</ixy>
           <ixz>0.0</ixz>
-          <iyy>0.13658351124562848</iyy>
+          <iyy>0.0011333333333333334</iyy>
           <iyz>0.0</iyz>
-          <izz>0.12426446138835252</izz>
+          <izz>0.008333333333333337</izz>
         </inertia>
       </inertial>
       <collision name="collision">
@@ -23,8 +23,8 @@
         <surface>
             <friction>
                 <ode>
-                    <mu>2.0</mu>
-                    <mu2>1.5</mu2>
+                    <mu>20</mu>
+                    <mu2>15</mu2>
                 </ode>
             </friction>
         </surface>

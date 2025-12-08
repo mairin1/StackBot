@@ -54,11 +54,10 @@ def dbscan(eps: float, min_samples: int, points: np.array):
     return clustering
 
 def clusters_to_point_clouds(dbscan_obj, points, meshcat, display=True):
-    _, n_features = dbscan_obj.components_.shape
     labels = dbscan_obj.labels_
     pcs = []
 
-    for n in range(n_features+1):
+    for n in range(len(np.unique(labels)) - 1): # ignore noise label (-1)
         mask = np.array(list(map(lambda x: x == n, labels)))
         points_in_cluster_n = points.T[mask]
         
@@ -130,15 +129,23 @@ def slope(xy1, xy2):
 def calc_rotation(block_pc):
     points = block_pc.xyzs()
     xs, ys = points[0], points[1]
-    corner1 = points[:, np.argmin(xs)]
-    corner2 = points[:, np.argmax(xs)]
-    corner3 = points[:, np.argmin(ys)]
-    corner4 = points[:, np.argmax(ys)]
-    slopes = np.array([slope(corner1[:2], corner4[:2]),
-              slope(corner2[:2], corner3[:2])])
-    best_slope_ind = np.argmax(slopes, axis=0)[0]
-    dy, dx = slopes[best_slope_ind][1], slopes[best_slope_ind][2]
-    angle_from_z = np.pi/2 - np.arctan2(dy, dx)
+    corner1 = points[:, np.argmin(xs)][:2]
+    corner2 = points[:, np.argmax(xs)][:2]
+    corner3 = points[:, np.argmin(ys)][:2]
+    corner4 = points[:, np.argmax(ys)][:2]
+    dist32 = euclidean_dist(corner3, corner2), slope(corner3, corner2)
+    dist24 = euclidean_dist(corner2, corner4), slope(corner2, corner4)
+    dist41 = euclidean_dist(corner4, corner1), slope(corner4, corner1)
+    dist13 = euclidean_dist(corner1, corner3), slope(corner1, corner3)
+    sideA = max(dist32, dist41) # (dist, [dy/dx, dy, dx])
+    sideB = max(dist24, dist13)
+    if (sideA[0] > sideB[0]):
+        dy = sideA[1][1]
+        dx = sideA[1][2]
+    else:
+        dy = sideB[1][1]
+        dx = sideB[1][2]
+    angle_from_z = (np.pi/2 - np.arctan2(dy, dx)) % np.pi
     return angle_from_z
 
 def calc_all_rotations(block_pcs):
@@ -184,3 +191,17 @@ def perceive(point_cloud: PointCloud, meshcat):
     X_WBs_by_length.reverse()
 
     return X_WBs_by_length
+
+def get_point_cloud_from_cameras(diagram, diagram_context):
+    # Evaluate all camera outputs
+    camera0_point_cloud = diagram.GetOutputPort("camera0_point_cloud").Eval(diagram_context)
+    camera1_point_cloud = diagram.GetOutputPort("camera1_point_cloud").Eval(diagram_context)
+    camera2_point_cloud = diagram.GetOutputPort("camera2_point_cloud").Eval(diagram_context)
+
+    # concatenate the point clouds
+    point_cloud = Concatenate([camera0_point_cloud, camera1_point_cloud, camera2_point_cloud])
+
+    # downsample the point clouds
+    point_cloud = point_cloud.VoxelizedDownSample(0.01)
+
+    return point_cloud
