@@ -5,7 +5,9 @@ def create_block_sdf(
         size : np.ndarray, 
         mass : float = 1, 
         pose : np.ndarray = [0, 0, 0, 0, 0, 0],
-        rgba : np.ndarray = [1, 1, 1, 1]
+        rgba : np.ndarray = [1, 1, 1, 1],
+        mu_static: float = 2.0,
+        mu_dynamic: float = 1.5,
 ) -> str:
 
 
@@ -40,6 +42,14 @@ f"""<?xml version="1.0"?>
             <size> {" ".join(str(num) for num in size)} </size>
           </box>
         </geometry>
+        <surface>
+            <friction>
+                <ode>
+                    <mu>{mu_static}</mu>
+                    <mu2>{mu_dynamic}</mu2>
+                </ode>
+            </friction>
+        </surface>
       </collision>
       <visual name="visual">
         <geometry>
@@ -58,18 +68,20 @@ f"""<?xml version="1.0"?>
 
 block_color_rgba = np.array([0, 1, 0, 1])
 
+folder = "assets/models"
+
 # I want blocks to be 10 x (10 + 2i) x 8 cm
 for i in range(11):
     w = 0.1 # i think 10cm is about our max gripper width
     l = 0.1 + 0.02 * i # 10 + i cm   
     h = 0.06 
-    with open(f"assets/block{i}.sdf", "w+") as f:
+    with open(f"{folder}/block{i}.sdf", "w+") as f:
         f.write(create_block_sdf(f"block{i}", [w, l, h], rgba=block_color_rgba))#rgba=np.array([197, 152, 214, 255]) / 255))
 
 # I want a floor
-with open("assets/floor.sdf", "w+") as f:
+with open(f"{folder}/floor.sdf", "w+") as f:
     f.write(create_block_sdf("floor", [3, 3, 0.1], rgba=[0.1, 0.1, 0.1, 1]))
 
 # I want a platform to stack on
-with open("assets/platform.sdf", "w+") as f:
+with open(f"{folder}/platform.sdf", "w+") as f:
     f.write(create_block_sdf("platform", [0.5, 0.5, 0.05]))
