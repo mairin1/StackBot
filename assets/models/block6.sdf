@@ -4,14 +4,14 @@
     <pose> 0 0 0 0 0 0 </pose>
     <link name="block6_link">
       <inertial>
-        <mass>1</mass>
+        <mass>0.2</mass>
         <inertia>
-          <ixx>0.13011388457200915</ixx>
+          <ixx>0.026022776914401833</ixx>
           <ixy>0.0</ixy>
           <ixz>0.0</ixz>
-          <iyy>0.1407789833705434</iyy>
+          <iyy>0.028155796674108682</iyy>
           <iyz>0.0</iyz>
-          <izz>0.13011388457200915</izz>
+          <izz>0.026022776914401833</izz>
         </inertia>
       </inertial>
       <collision name="collision">
@@ -23,8 +23,8 @@
         <surface>
             <friction>
                 <ode>
-                    <mu>2.0</mu>
-                    <mu2>1.5</mu2>
+                    <mu>1.0</mu>
+                    <mu2>1.0</mu2>
                 </ode>
             </friction>
         </surface>

@@ -130,7 +130,6 @@ def design_top_down_grasp(
 
     # pick the shorter horizontal axis for closing (more likely to fit)
     closeW = xW if ex < ey else yW
-    # closeW = xW
 
     # project closing direction into world XY (keeps it horizontal)
     closeW = np.array([closeW[0], closeW[1], 0.0])

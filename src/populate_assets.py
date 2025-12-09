@@ -6,8 +6,8 @@ def create_block_sdf(
         mass : float = 1, 
         pose : np.ndarray = [0, 0, 0, 0, 0, 0],
         rgba : np.ndarray = [1, 1, 1, 1],
-        mu_static: float = 2.0,
-        mu_dynamic: float = 1.5,
+        mu_static: float = 1.0,
+        mu_dynamic: float = 1.0,
 ) -> str:
 
     assert len(pose) == 6, "pose must be 6d"
@@ -112,7 +112,7 @@ for i in range(11):
     l = 0.1 + 0.02 * i # 10 + i cm   
     h = 0.06 
     with open(f"{folder}/block{i}.sdf", "w+") as f:
-        f.write(create_block_sdf(f"block{i}", [w, l, h], rgba=block_color_rgba))#rgba=np.array([197, 152, 214, 255]) / 255))
+        f.write(create_block_sdf(f"block{i}", [w, l, h], mass=0.2, rgba=block_color_rgba))#rgba=np.array([197, 152, 214, 255]) / 255))
 
 # I want a floor
 with open(f"{folder}/floor.sdf", "w+") as f:

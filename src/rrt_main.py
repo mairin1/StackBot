@@ -22,7 +22,7 @@ from planning_utils import design_top_down_grasp
 
 from rrt_planner import pick_and_place_traj_rrt_one_block
 
-def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, "RigidTransform"], meshcat, segment_ranges, time_offset: float):
+def execute_rrt_path(simulator, full_q_path, full_g_path, scenario, block_poses: dict[str, "RigidTransform"], meshcat, segment_ranges, time_offset: float):
     """
     Build a fresh station for execution and feed the RRT joint/gripper
     trajectories directly into iiwa.position and wsg.position.
@@ -109,7 +109,7 @@ def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, 
         plant.SetFreeBodyPose(plant_context, body, X_WB)
 
     context.SetTime(time_offset)
-    simulator = Simulator(diagram, context)
+    # simulator = Simulator(diagram, context)
     simulator.AdvanceTo(ts[-1]) # ts[-1] = time_offset+duration here TODO verify!! -> yep
     print("Finished executing RRT path.")
     updated_block_poses: dict[str, RigidTransform] = {}
@@ -234,6 +234,8 @@ if __name__ == "__main__":
     # publish once so camera clouds exist
     diagram.ForcedPublish(diagram_context)
     input("Hit enter to continue") # add this if you want to stop to look at scene before motion planning starts
+    simulator = Simulator(diagram, diagram_context)
+
     meshcat.StartRecording()
 
     # compute platform pose for placing
@@ -273,7 +275,7 @@ if __name__ == "__main__":
             continue
 
         # execute that RRT path in a clean execution diagram
-        block_poses, duration = execute_rrt_path(full_q_path, full_g_path, scenario, block_poses, meshcat, segment_ranges, time_offset=current_time)
+        block_poses, duration = execute_rrt_path(simulator, full_q_path, full_g_path, scenario, block_poses, meshcat, segment_ranges, time_offset=current_time)
         current_time += duration
         
         # input("Finished execution for this block. Press Enter for next (or Ctrl+C to stop)...\n") 

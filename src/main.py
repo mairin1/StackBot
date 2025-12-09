@@ -38,8 +38,7 @@ def generate_setup():
     meshcat = StartMeshcat()
     print("Click the link above to open Meshcat in your browser!")
 
-    rng = np.random.default_rng(seed=114)
-
+    rng = np.random.default_rng(seed=114) # ones that work-ish: 114
     block_numbers = rng.choice(range(11), size=rng.choice([4, 5, 6]), replace=False)
     print("This scenario uses blocks:", block_numbers)
     blocks = [f"block{i}" for i in block_numbers]
