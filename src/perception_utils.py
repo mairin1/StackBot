@@ -142,8 +142,8 @@ def calc_rotation(block_pc):
     dist24 = euclidean_dist(corner2, corner4), slope(corner2, corner4)
     dist41 = euclidean_dist(corner4, corner1), slope(corner4, corner1)
     dist13 = euclidean_dist(corner1, corner3), slope(corner1, corner3)
-    sideA = max(dist32, dist41) # (dist, [dy/dx, dy, dx])
-    sideB = max(dist24, dist13)
+    sideA = max(dist32, dist41, key=lambda x: x[0]) # (dist, [dy/dx, dy, dx])
+    sideB = max(dist24, dist13, key=lambda x: x[0])
     if (sideA[0] > sideB[0]):
         dy = sideA[1][1]
         dx = sideA[1][2]
@@ -181,7 +181,7 @@ def perceive(point_cloud: PointCloud, meshcat):
 
     # use DBSCAN to isolate each block as its own point cloud
     clusters = dbscan(0.04, 6, cropped_pc.xyzs())
-    block_pt_clouds = clusters_to_point_clouds(clusters, cropped_pc.xyzs(), meshcat)
+    block_pt_clouds = clusters_to_point_clouds(clusters, cropped_pc.xyzs(), meshcat, display=False)
 
     # calculate translation, rotation, and length estimates
     translations = calculate_all_translations(block_pt_clouds, meshcat, display=False)
