@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
-import trimesh
 
 from pydrake.all import(
     RigidTransform,
@@ -29,13 +28,16 @@ def block_directive(block_name : str, translation, rotation) -> str:
                 rotation: !Rpy {{ deg: [{r}, {p}, {yaw}]}}
 """
 
-def create_randomized_block_directives(block_names : list[str]) -> str:
+def create_randomized_block_directives(block_names : list[str], rng : np.random.Generator | None = None) -> str:
+    if rng is None:
+        rng = np.random.default_rng()
+
     directives = ""
 
     def sample_point():
         # must be within 0.8m of the iiwa
-        r = np.random.uniform(0.5, 0.8)
-        theta = np.random.uniform(0, np.pi) # i only want it to be in the positive y side
+        r = rng.uniform(0.5, 0.8)
+        theta = rng.uniform(0, np.pi) # i only want it to be in the positive y side
         
         x = r * np.cos(theta)
         y = r * np.sin(theta) - 0.5 # iiwa offset from center
@@ -139,7 +141,19 @@ def create_camera_directives() -> str:
         child: camera2::base
 """
 
-def generate_scenario_yaml(blocks: list[str]) -> str:
+def create_obstacle_directives() -> str:
+    return "\n".join(f"""
+    - add_model:
+        name: post{i}
+        file: package://stackbot/post.sdf
+    - add_weld:
+        parent: world
+        child: post{i}::post_link
+        X_PC:
+            translation: [{-0.3 if i < 2 else 0.3}, {-0.3 if i % 2 == 0 else 0.3}, 0.25]
+    """ for i in range(4))
+
+def generate_scenario_yaml(blocks: list[str], rng : np.random.Generator, obstacle : bool = False) -> str:
     directives = f"""
 directives:
     - add_model:
@@ -178,13 +192,14 @@ directives:
             translation: [0, -0.1, -0.05]
     - add_model:
         name: platform
-        file: package://stackbot/platform.sdf
+        file: package://stackbot/round_platform.sdf
     - add_weld:
         parent: world
         child: platform::platform_link
 
-    { create_randomized_block_directives(blocks) }
+    { create_randomized_block_directives(blocks, rng) }
     { create_camera_directives() }
+    { "" if not obstacle else create_obstacle_directives() }
     """
 
     cameras = """

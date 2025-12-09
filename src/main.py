@@ -38,14 +38,14 @@ def generate_setup():
     meshcat = StartMeshcat()
     print("Click the link above to open Meshcat in your browser!")
 
-    # generate_blocks()
+    rng = np.random.default_rng(seed=1)
 
-    block_numbers = np.random.choice(range(11), size=np.random.choice([4, 5, 6]), replace=False)
+    block_numbers = rng.choice(range(11), size=rng.choice([4, 5, 6]), replace=False)
     print("This scenario uses blocks:", block_numbers)
     blocks = [f"block{i}" for i in block_numbers]
 
     scenario = LoadScenario(
-        data=generate_scenario_yaml(blocks)
+        data=generate_scenario_yaml(blocks, rng)
     )
 
     station = MakeHardwareStation(

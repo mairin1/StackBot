@@ -1,23 +1,23 @@
 <?xml version="1.0"?>
 <sdf version="1.7">
-  <model name="floor">
+  <model name="post">
     <pose> 0 0 0 0 0 0 </pose>
-    <link name="floor_link">
+    <link name="post_link">
       <inertial>
         <mass>1</mass>
         <inertia>
-          <ixx>21.39952735289369</ixx>
+          <ixx>0.13066653670985687</ixx>
           <ixy>0.0</ixy>
           <ixz>0.0</ixz>
-          <iyy>21.39952735289369</iyy>
+          <iyy>0.13066653670985687</iyy>
           <iyz>0.0</iyz>
-          <izz>42.666666666666664</izz>
+          <izz>0.14348194322195582</izz>
         </inertia>
       </inertial>
       <collision name="collision">
         <geometry>
           <box>
-            <size> 4 4 0.1 </size>
+            <size> 0.05 0.05 0.5 </size>
           </box>
         </geometry>
         <surface>
@@ -32,11 +32,11 @@
       <visual name="visual">
         <geometry>
           <box>
-            <size> 4 4 0.1 </size>
+            <size> 0.05 0.05 0.5 </size>
           </box>
         </geometry>
         <material>
-          <diffuse>0.1 0.1 0.1 1</diffuse>
+          <diffuse>1 1 1 1</diffuse>
         </material>
       </visual>
     </link>
