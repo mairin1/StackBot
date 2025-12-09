@@ -7,8 +7,6 @@ from pydrake.all import(
     DiagramBuilder,
     Integrator,
     PointCloud,
-    Rgba,
-    RollPitchYaw,
     Simulator,
     StartMeshcat,
     ConstantVectorSource
@@ -137,7 +135,7 @@ def pick_block(estimated_X_WB, plant, plant_context, diagram, diagram_context, m
     # xxprint("Pose error rpy:", RollPitchYaw(err.rotation()).vector(), "xyz:", err.translation())
 
     # design grasp
-    X_WG_pre, X_WG_pick = design_top_down_grasp(X_WB_hat, extents_hat, ee_approach_axis="y", ee_close_axis="x")
+    X_WG_pre, X_WG_pick = design_top_down_grasp(X_WB_hat, extents_hat, ee_approach_axis="y", ee_close_axis="x", z_clearance=0.05)
     
     AddMeshcatTriad(meshcat, "X_WB_hat", X_PT=X_WB_hat, length=0.15)
     AddMeshcatTriad(meshcat, "X_WG_pre", X_PT=X_WG_pre, length=0.15)
@@ -157,6 +155,7 @@ def pick_block(estimated_X_WB, plant, plant_context, diagram, diagram_context, m
         X_WG_pick=X_WG_pick,
         place_xy=place_xy,
         place_z=place_z,
+        lift_distance=0.3
     )
     return pose_traj, wsg_traj
 
@@ -207,7 +206,7 @@ def main():
     for stack_level in range(len(est_X_WBs_by_length)):
         print("platform_half_h = ", platform_half_h)
         print("block_h = ", block_h)
-        place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h
+        place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h + PLACE_Z_BUFFER
 
         # plan using perception
         pose_traj, wsg_traj = pick_block(

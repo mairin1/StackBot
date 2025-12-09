@@ -123,6 +123,7 @@ def plan_rrt_chain(
     return full_q_path, full_g_path, segment_ranges
 
 def pick_and_place_traj_rrt_one_block(
+        scenario,
         X_WG_initial: RigidTransform,
         X_WG_pre: RigidTransform,
         X_WG_pick: RigidTransform,
@@ -132,7 +133,6 @@ def pick_and_place_traj_rrt_one_block(
         approach_clearance: float = 0.12,
         align_stack_yaw: bool = True,
         stack_yaw: float = 0,
-        scenario_stack_file: str = "scenarios/bimanual_IIWA14_stackbot_assets_and_cameras.scenario.yaml",
         max_rrt_iters: int = 3000,
         meshcat = None,
         verbose = True,
@@ -143,7 +143,7 @@ def pick_and_place_traj_rrt_one_block(
         print("Click the link above to open Meshcat in your browser (RRT demo).")
 
     sim = ManipulationStationSim(
-        scenario_file=scenario_stack_file,
+        scenario=scenario,
         q_iiwa=None, # TODO: should in theory match with X_WG_initial
         gripper_setpoint=GRIPPER_OPEN,
         meshcat=meshcat,

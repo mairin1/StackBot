@@ -12,7 +12,7 @@ from scene_utils import *
 class ManipulationStationSim:
     def __init__(
         self,
-        scenario_file: str | None = None,
+        scenario: str | None = None,
         q_iiwa: tuple | None = None,
         gripper_setpoint: float = 0.1,
         meshcat=None,
@@ -40,12 +40,14 @@ class ManipulationStationSim:
         self.okay_collisions = None
         self.gripper_setpoint = gripper_setpoint
 
-        if scenario_file is not None:
-            self.choose_sim(scenario_file, q_iiwa, gripper_setpoint, block_poses)
+        if scenario is not None:
+            self.choose_sim(scenario, q_iiwa, gripper_setpoint, block_poses)
+        else:
+            raise ValueError("Must pass in a scenario to ManipulationStationSim.")
 
     def choose_sim(
         self,
-        scenario_file: str,
+        scenario,
         q_iiwa: tuple | None = None,
         gripper_setpoint: float = 0.1,
         block_poses: dict[str, "RigidTransform"] | None = None,
@@ -54,7 +56,7 @@ class ManipulationStationSim:
 
         self.clear_meshcat()
 
-        self.scenario = LoadScenario(filename=scenario_file)
+        self.scenario = scenario
         builder = DiagramBuilder()
         self.station = builder.AddSystem(
             MakeHardwareStation(self.scenario, meshcat=self.meshcat, package_xmls=["assets/models/package.xml"],)
