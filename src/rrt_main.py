@@ -16,19 +16,18 @@ from manipulation.station import LoadScenario, MakeHardwareStation, AddPointClou
 from manipulation.meshcat_utils import AddMeshcatTriad
 
 from constants import *
-from scene_utils import randomize_blocks_near_kuka, get_block_poses
+from scene_utils import generate_scenario_yaml, get_block_poses
 from perception_utils import get_point_cloud_from_cameras, perceive
 from planning_utils import design_top_down_grasp
 
 from rrt_planner import pick_and_place_traj_rrt_one_block
 
-def execute_rrt_path(full_q_path, full_g_path, scenario_file: str, block_poses: dict[str, "RigidTransform"], meshcat, segment_ranges, time_offset: float):
+def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, "RigidTransform"], meshcat, segment_ranges, time_offset: float):
     """
     Build a fresh station for execution and feed the RRT joint/gripper
     trajectories directly into iiwa.position and wsg.position.
     """
     builder = DiagramBuilder()
-    scenario = LoadScenario(filename=scenario_file)
     station = builder.AddSystem(
         MakeHardwareStation(
             scenario=scenario,
@@ -118,37 +117,29 @@ def execute_rrt_path(full_q_path, full_g_path, scenario_file: str, block_poses: 
     return updated_block_poses, duration
 
 def pick_block(
-    block_idx: int,
-    estimated_X_WBs,
+    estimated_X_WB,
     plant,
     plant_context,
     meshcat,
     place_xy: np.ndarray,
     place_z: float,
     block_poses: dict[str, "RigidTransform"],
+    scenario
 ):
     """
     Use perception (estimated_X_WBs) to design the grasp and then call
     pick_traj_rrt_one_block to get a joint-space RRT path for one block.
     """
-    block_name = f"block{block_idx}"
-    block_inst = plant.GetModelInstanceByName(block_name)
-    block_body = plant.GetBodyByName(f"{block_name}_link", block_inst)
-    X_WB_true = plant.EvalBodyPoseInWorld(plant_context, block_body)
+    # block_name = f"block{block_idx}"
+    # block_inst = plant.GetModelInstanceByName(block_name)
+    # block_body = plant.GetBodyByName(f"{block_name}_link", block_inst)
+    # X_WB_true = plant.EvalBodyPoseInWorld(plant_context, block_body)
 
-    X_WB_hat = estimated_X_WBs[block_idx - 1][0]
+    X_WB_hat = estimated_X_WB[0]
 
     # extents estimate (you may want to tighten this later)
-    extents_hat = (0.08, estimated_X_WBs[block_idx - 1][1], 0.06)
+    extents_hat = (0.08, estimated_X_WB[1], 0.06)
     print("Estimated extents:", extents_hat)
-
-    err = X_WB_hat.inverse().multiply(X_WB_true)
-    print(
-        "Pose error rpy:",
-        RollPitchYaw(err.rotation()).vector(),
-        "xyz:",
-        err.translation(),
-    )
 
     X_WG_pre, X_WG_pick = design_top_down_grasp(
         X_WB_hat,
@@ -168,6 +159,7 @@ def pick_block(
 
     # pick_traj_rrt_one_block constructs its own RRT world and return the path
     full_q_path, full_g_path, segment_ranges = pick_and_place_traj_rrt_one_block(
+        scenario,
         X_WG_initial,
         X_WG_pre,
         X_WG_pick,
@@ -177,7 +169,6 @@ def pick_block(
         approach_clearance=0.12,
         align_stack_yaw=True,
         stack_yaw=0,
-        scenario_stack_file="scenarios/bimanual_IIWA14_stackbot_assets_and_cameras.scenario.yaml",
         max_rrt_iters=3000,
         meshcat=meshcat,
         verbose=True,
@@ -187,16 +178,25 @@ def pick_block(
     return full_q_path, full_g_path, segment_ranges
 
 
-Z_BUFFER = 0.05 # to prevent collision of gripper with floor 
+# Z_BUFFER = 0.05 # to prevent collision of gripper with floor 
 if __name__ == "__main__":
-    scenario_stack_file = "scenarios/bimanual_IIWA14_stackbot_assets_and_cameras.scenario.yaml"
+    # scenario_stack_file = "scenarios/bimanual_IIWA14_stackbot_assets_and_cameras.scenario.yaml"
+    # randomize blocks once in this world
+    block_numbers = np.random.choice(range(11), size=np.random.choice([4, 5, 6]), replace=False)
+    print("This scenario uses blocks:", block_numbers)
+    blocks = [f"block{i}" for i in block_numbers]
+    NUM_BLOCKS = len(blocks)
+
+    scenario = LoadScenario(
+        data=generate_scenario_yaml(blocks)
+    )
 
     # build a diagram for perception and block randomization
     meshcat = StartMeshcat()
     print("Click the link above to open Meshcat (perception + planning).")
 
     builder = DiagramBuilder()
-    scenario = LoadScenario(filename=scenario_stack_file)
+    # scenario = LoadScenario(filename=scenario_stack_file)
     station = builder.AddSystem(
         MakeHardwareStation(
             scenario=scenario,
@@ -219,10 +219,6 @@ if __name__ == "__main__":
 
     plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
-    # randomize blocks once in this world
-    blocks = [f"block{i}" for i in range(1, NUM_BLOCKS + 1)]
-    rng = np.random.default_rng(1234)
-    randomize_blocks_near_kuka(blocks, plant, plant_context, rng=rng)
     block_poses = get_block_poses(plant, plant_context, blocks)
     # publish once so camera clouds exist
     diagram.ForcedPublish(diagram_context)
@@ -248,22 +244,22 @@ if __name__ == "__main__":
         print("platform_half_h =", platform_half_h)
         print("block_h =", block_h)
 
-        place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h + Z_BUFFER
+        place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h + PLACE_Z_BUFFER
         print("place_z:", place_z)
 
         full_q_path, full_g_path, segment_ranges = pick_block(
-            block_idx=stack_level + 1,
-            estimated_X_WBs=est_X_WBs_by_length,
+            estimated_X_WB=est_X_WBs_by_length[stack_level],
             plant=plant,
             plant_context=plant_context,
             meshcat=meshcat,
             place_xy=place_xy,
             place_z=place_z,
-            block_poses=block_poses
+            block_poses=block_poses,
+            scenario=scenario
         )
 
         # execute that RRT path in a clean execution diagram
-        block_poses, duration = execute_rrt_path(full_q_path, full_g_path, scenario_stack_file, block_poses, meshcat, segment_ranges, time_offset=current_time)
+        block_poses, duration = execute_rrt_path(full_q_path, full_g_path, scenario, block_poses, meshcat, segment_ranges, time_offset=current_time)
         current_time += duration
         # input("Finished execution for this block. Press Enter for next (or Ctrl+C to stop)...\n")
     # once all blocks done, stop and publish the full recording
