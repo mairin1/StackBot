@@ -7,6 +7,7 @@ from pydrake.all import (
     RigidTransform,
     RotationMatrix,
     TrajectorySource,
+    RollPitchYaw
 )
 
 import numpy as np
@@ -118,6 +119,7 @@ def design_top_down_grasp(
     ee_approach_axis,
     ee_close_axis,
     approach_clearance: float = 0.12,
+    z_clearance: float = 0.0
 ):
     R_WB = X_WB.rotation().matrix()
     p_WB = X_WB.translation()
@@ -143,7 +145,7 @@ def design_top_down_grasp(
         ee_close_axis=ee_close_axis,
     )
     
-    p_WE_pick = p_WB + np.array([0.0, 0.0, 0.5 * ez])
+    p_WE_pick = p_WB + np.array([0.0, 0.0, 0.5 * ez + z_clearance])
     X_WE_pick = RigidTransform(R_WE, p_WE_pick) # type: ignore
     X_WE_pre  = RigidTransform(R_WE, p_WE_pick + np.array([0.0, 0.0, approach_clearance])) # type: ignore
 
@@ -189,7 +191,9 @@ def make_pick_and_place_trajectories(
         place_xy: np.ndarray,
         place_z: float,
         lift_distance: float = 0.5, 
-        approach_clearance: float = 0.12
+        approach_clearance: float = 0.12,
+        align_stack_yaw: bool = True,
+        stack_yaw: float = 0.0,
 ):
     """ 
     Build a single trajectory that:
@@ -204,8 +208,18 @@ def make_pick_and_place_trajectories(
     p_lift = X_WG_pick.translation().copy()
     p_lift[2] += float(lift_distance)
     X_WG_lift = RigidTransform(X_WG_pick.rotation(), p_lift)
+    
+    R_pick = X_WG_pick.rotation()
+    if align_stack_yaw:
+        rpy_pick = RollPitchYaw(R_pick)
+        R_place = RollPitchYaw(
+            rpy_pick.roll_angle(),
+            rpy_pick.pitch_angle(),
+            stack_yaw,
+        ).ToRotationMatrix()
+    else:
+        R_place = R_pick
 
-    R_place = X_WG_pick.rotation()
     p_place = np.array([place_xy[0], place_xy[1], place_z], dtype=float)
     X_WG_place = RigidTransform(R_place, p_place)
     X_WG_pre_place = RigidTransform(R_place, p_place + np.array([0.0, 0.0, approach_clearance], dtype=float))

@@ -359,3 +359,16 @@ def randomize_blocks_near_kuka(
                 f"[randomize_blocks_near_kuka] Warning: "
                 f"could not find valid pose for {name} after {max_tries_per_block} tries."
             )
+
+def get_block_poses(plant, plant_context, block_names):
+    """
+    Return a dict mapping block_name -> X_WB (RigidTransform) for the given block names.
+    Assumes each block has a body named f"{block_name}_link".
+    """
+    poses = {}
+    for name in block_names:
+        model_inst = plant.GetModelInstanceByName(name)
+        body = plant.GetBodyByName(f"{name}_link", model_inst)
+        X_WB = plant.EvalBodyPoseInWorld(plant_context, body)
+        poses[name] = X_WB
+    return poses
