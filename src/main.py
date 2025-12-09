@@ -42,12 +42,12 @@ def generate_setup():
 
     # generate_blocks()
 
-    create_camera_directives()
-    generate_directives_yaml(NUM_BLOCKS)
-    generate_scenario_yaml()
+    block_numbers = np.random.choice(range(11), size=np.random.choice([4, 5, 6]), replace=False)
+    print("This scenario uses blocks:", block_numbers)
+    blocks = [f"block{i}" for i in block_numbers]
 
     scenario = LoadScenario(
-        filename="scenarios/bimanual_IIWA14_stackbot_assets_and_cameras.scenario.yaml"
+        data=generate_scenario_yaml(blocks)
     )
 
     station = MakeHardwareStation(
@@ -105,17 +105,17 @@ def generate_model_point_cloud(block_idx: int):
     print(f"Loaded model mesh from {block_mesh_path}, sampled {sampled_pts.shape[0]} points")
     return block_model_cloud
 
-def pick_block(block_idx: int, estimated_X_WBs, plant, plant_context, diagram, diagram_context, meshcat, pc_systems, place_xy: np.ndarray, place_z: float):
+def pick_block(estimated_X_WB, plant, plant_context, diagram, diagram_context, meshcat, pc_systems, place_xy: np.ndarray, place_z: float):
     """
     Pipeline for pick + placing one block. 
     System currently half-cheats for perception (identifying blocks using their true pose).
     TODO: ^ identify blocks using a different method (e.g., clustering)
     """
     # pick one block
-    block_name = f"block{block_idx}"
-    block_inst = plant.GetModelInstanceByName(block_name)
-    block_body = plant.GetBodyByName(f"{block_name}_link", block_inst)
-    X_WB_true = plant.EvalBodyPoseInWorld(plant_context, block_body)
+    # block_name = f"block{block_idx}"
+    # block_inst = plant.GetModelInstanceByName(block_name)
+    # block_body = plant.GetBodyByName(f"{block_name}_link", block_inst)
+    # X_WB_true = plant.EvalBodyPoseInWorld(plant_context, block_body)
 
     # perception crop + merge
     # block_cloud = preprocess_block_cloud(
@@ -127,18 +127,18 @@ def pick_block(block_idx: int, estimated_X_WBs, plant, plant_context, diagram, d
 
     # estimate pose from perception
     # X_WB_hat = estimate_pose_pca(block_cloud)
-    X_WB_hat = estimated_X_WBs[block_idx-1][0]
+    X_WB_hat = estimated_X_WB[0]
     # extents_hat, _, _ = estimate_extents_along_axes(block_cloud, X_WB_hat)
-    extents_hat = 0.08, estimated_X_WBs[block_idx-1][1], 0.06
+    extents_hat = 0.06, estimated_X_WB[1], 0.06
     print("Estimated extents:", extents_hat)
 
     # compare to truth (sanity check)
-    err = X_WB_hat.inverse().multiply(X_WB_true)
-    print("Pose error rpy:", RollPitchYaw(err.rotation()).vector(), "xyz:", err.translation())
+    # err = X_WB_hat.inverse().multiply(X_WB_true)
+    # xxprint("Pose error rpy:", RollPitchYaw(err.rotation()).vector(), "xyz:", err.translation())
 
     # design grasp
     X_WG_pre, X_WG_pick = design_top_down_grasp(X_WB_hat, extents_hat, ee_approach_axis="y", ee_close_axis="x")
-
+    
     AddMeshcatTriad(meshcat, "X_WB_hat", X_PT=X_WB_hat, length=0.15)
     AddMeshcatTriad(meshcat, "X_WG_pre", X_PT=X_WG_pre, length=0.15)
     AddMeshcatTriad(meshcat, "X_WG", X_PT=X_WG_pick, length=0.15)
@@ -168,12 +168,8 @@ def main():
 
     diagram = builder.Build()
     diagram_context = diagram.CreateDefaultContext()
-
-    blocks = [f"block{i}" for i in range(1, NUM_BLOCKS + 1)]
     plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
-    rng = np.random.default_rng(1234)
-    randomize_blocks_near_kuka(blocks, plant, plant_context, rng=rng)
 
     # publish once so camera clouds exist
     diagram.ForcedPublish(diagram_context)
@@ -201,22 +197,22 @@ def main():
 
     simulator = Simulator(diagram, diagram_context)
 
+    meshcat.StartRecording()
+    simulator.AdvanceTo(5) # allow time for blocks to drop before getting point clouds
+    current_time = simulator.get_context().get_time()
+
     point_cloud = get_point_cloud_from_cameras(diagram, diagram_context)
     est_X_WBs_by_length = perceive(point_cloud, meshcat)
 
-    meshcat.StartRecording()
-    current_time = simulator.get_context().get_time()
-
-
-    for stack_level in range(NUM_BLOCKS):
+    for stack_level in range(len(est_X_WBs_by_length)):
         print("platform_half_h = ", platform_half_h)
         print("block_h = ", block_h)
         place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h
 
         # plan using perception
         pose_traj, wsg_traj = pick_block(
-            stack_level + 1,
-            est_X_WBs_by_length,
+            # stack_level + 1,
+            est_X_WBs_by_length[stack_level], # est_X_WBs_by_length,
             plant, plant_context,
             diagram, diagram_context,
             meshcat, pc_systems,

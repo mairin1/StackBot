@@ -130,6 +130,7 @@ def design_top_down_grasp(
 
     # pick the shorter horizontal axis for closing (more likely to fit)
     closeW = xW if ex < ey else yW
+    # closeW = xW
 
     # project closing direction into world XY (keeps it horizontal)
     closeW = np.array([closeW[0], closeW[1], 0.0])
@@ -204,6 +205,14 @@ def make_pick_and_place_trajectories(
         5) Returns to X_WG_initial
     """
     place_xy = np.asarray(place_xy, dtype=float).reshape(2)
+
+
+    rpy_pick = RollPitchYaw(X_WG_pick.rotation())
+    R_place = RollPitchYaw(
+        rpy_pick.roll_angle(),
+        rpy_pick.pitch_angle(),
+        45,
+    ).ToRotationMatrix()
 
     p_lift = X_WG_pick.translation().copy()
     p_lift[2] += float(lift_distance)

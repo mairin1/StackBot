@@ -45,7 +45,7 @@ class PseudoInverseDiffIK(LeafSystem):
 
         J = self._plant.CalcJacobianSpatialVelocity(
             self._context,
-            JacobianWrtVariable.kV,
+            JacobianWrtVariable.kQDot,
             self._E, # frame_B  (the EE frame)
             p_BoBp_B, 
             self._W, # frame_A  (measured in world)

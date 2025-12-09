@@ -72,7 +72,7 @@ folder = "assets/models"
 
 # I want blocks to be 10 x (10 + 2i) x 8 cm
 for i in range(11):
-    w = 0.08# i think 10cm is about our max gripper width
+    w = 0.06# i think 10cm is about our max gripper width
     l = 0.1 + 0.02 * i # 10 + i cm   
     h = 0.06 
     with open(f"{folder}/block{i}.sdf", "w+") as f:
