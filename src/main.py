@@ -129,16 +129,16 @@ def pick_block(estimated_X_WB, plant, plant_context, diagram, diagram_context, m
     # X_WB_hat = estimate_pose_pca(block_cloud)
     X_WB_hat = estimated_X_WB[0]
     # extents_hat, _, _ = estimate_extents_along_axes(block_cloud, X_WB_hat)
-    extents_hat = 0.08, estimated_X_WB[1], 0.06
+    extents_hat = 0.06, estimated_X_WB[1], 0.06
     print("Estimated extents:", extents_hat)
 
     # compare to truth (sanity check)
     # err = X_WB_hat.inverse().multiply(X_WB_true)
-    # print("Pose error rpy:", RollPitchYaw(err.rotation()).vector(), "xyz:", err.translation())
+    # xxprint("Pose error rpy:", RollPitchYaw(err.rotation()).vector(), "xyz:", err.translation())
 
     # design grasp
     X_WG_pre, X_WG_pick = design_top_down_grasp(X_WB_hat, extents_hat, ee_approach_axis="y", ee_close_axis="x")
-
+    
     AddMeshcatTriad(meshcat, "X_WB_hat", X_PT=X_WB_hat, length=0.15)
     AddMeshcatTriad(meshcat, "X_WG_pre", X_PT=X_WG_pre, length=0.15)
     AddMeshcatTriad(meshcat, "X_WG", X_PT=X_WG_pick, length=0.15)
