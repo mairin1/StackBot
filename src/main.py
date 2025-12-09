@@ -197,12 +197,12 @@ def main():
 
     simulator = Simulator(diagram, diagram_context)
 
-    point_cloud = get_point_cloud_from_cameras(diagram, diagram_context)
-    est_X_WBs_by_length = perceive(point_cloud, meshcat)
-
     meshcat.StartRecording()
+    simulator.AdvanceTo(5) # allow time for blocks to drop before getting point clouds
     current_time = simulator.get_context().get_time()
 
+    point_cloud = get_point_cloud_from_cameras(diagram, diagram_context)
+    est_X_WBs_by_length = perceive(point_cloud, meshcat)
 
     for stack_level in range(len(est_X_WBs_by_length)):
         print("platform_half_h = ", platform_half_h)
