@@ -6,8 +6,8 @@
       <visual name="visual">
         <geometry>
           <cylinder>
-            <radius>0.3</radius>
-            <length>0.05</length>
+            <radius>0.25</radius>
+            <length>0.03</length>
           </cylinder>
         </geometry>
         <material>
@@ -17,8 +17,8 @@
       <collision name="collision">
         <geometry>
           <cylinder>
-            <radius>0.3</radius>
-            <length>0.05</length>
+            <radius>0.25</radius>
+            <length>0.03</length>
           </cylinder>
         </geometry>
         <surface>
