@@ -1,4 +1,4 @@
-# run from StackBot/ as python src/rrt_main.py
+# run from StackBot/ as python src/rrt_main.py --seed 114 (replace with whatever seed you want)
 import numpy as np
 
 from pydrake.all import (
@@ -19,8 +19,11 @@ from constants import *
 from scene_utils import generate_scenario_yaml, get_block_poses
 from perception_utils import get_point_cloud_from_cameras, perceive
 from planning_utils import design_top_down_grasp
+from utils import *
 
 from rrt_planner import pick_and_place_traj_rrt_one_block
+
+import argparse
 
 def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, "RigidTransform"], meshcat, segment_ranges, time_offset: float):
     """
@@ -184,14 +187,17 @@ def pick_block(
 
 
 # Z_BUFFER = 0.05 # to prevent collision of gripper with floor 
-RANDOM_SEED = 114
 if __name__ == "__main__":
     # successful_seeds = []
     # for seed in range(100, 120):
         # try: 
-            
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, help="input seed")
+    args = parser.parse_args()
+    seed_input = args.seed if args.seed is not None else 114
+
     # randomize blocks once in this world
-    rng = np.random.default_rng(seed=RANDOM_SEED)
+    rng = np.random.default_rng(seed=seed_input)
     num_blocks = rng.choice([4, 5, 6])
     block_numbers = rng.choice(np.arange(11), size=num_blocks, replace=False)
     print("This scenario uses blocks:", block_numbers)
@@ -281,6 +287,9 @@ if __name__ == "__main__":
     # once all blocks done, stop and publish the full recording
     meshcat.StopRecording()
     meshcat.PublishRecording()
+    yesNo = input("Enter Y to save the final stack poses: ")
+    if (yesNo == "Y" or yesNo == "y"):
+        save_positions(plant, plant_context, [f"{name}_link" for name in blocks], f"assets/contexts/stack_rrt_{seed_input}.json")
     input("All blocks done. Press Enter to close Meshcat...\n")
     #     except:
     #         continue

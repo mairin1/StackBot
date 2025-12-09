@@ -1,4 +1,5 @@
-# run this file from root -- python src/main.py (this is necessary for the paths to assets etc. to be correct)
+# run this file from root -- python src/main.py --seed enter_seed_int
+# (this is necessary for the paths to assets etc. to be correct)
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,6 +28,8 @@ from planning_utils import *
 from diff_ik import PseudoInverseDiffIK
 from utils import *
 
+import argparse
+
 def connect_if_present(builder, station, port_name, value):
     try:
         port = station.GetInputPort(port_name)
@@ -35,11 +38,11 @@ def connect_if_present(builder, station, port_name, value):
     src = builder.AddSystem(ConstantVectorSource(value))
     builder.Connect(src.get_output_port(), port)
 
-def generate_setup():
+def generate_setup(seed=114):
     meshcat = StartMeshcat()
     print("Click the link above to open Meshcat in your browser!")
 
-    rng = np.random.default_rng(seed=114) # ones that work-ish: 114
+    rng = np.random.default_rng(seed=seed) # ones that work-ish: 114, 1007
     block_numbers = rng.choice(range(11), size=rng.choice([4, 5, 6]), replace=False)
     print("This scenario uses blocks:", block_numbers)
     blocks = [f"block{i}" for i in block_numbers]
@@ -162,7 +165,12 @@ def pick_block(estimated_X_WB, plant, plant_context, diagram, diagram_context, m
 # ENTRY POINT
 
 def main():
-    builder, station, meshcat, pc_systems, commander, integrator, block_names = generate_setup()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, help="input seed")
+    args = parser.parse_args()
+    seed_input = args.seed if args.seed is not None else 114
+
+    builder, station, meshcat, pc_systems, commander, integrator, block_names = generate_setup(seed_input)
     plant = station.GetSubsystemByName("plant")
 
     diagram = builder.Build()
@@ -237,7 +245,9 @@ def main():
 
     meshcat.StopRecording()
     meshcat.PublishRecording()
-    save_positions(plant, plant_context, [f"{name}_link" for name in block_names], "assets/contexts/ITWORKSseed114.json")
+    yesNo = input("Enter Y to save the final stack poses: ")
+    if (yesNo == "Y" or yesNo == "y"):
+        save_positions(plant, plant_context, [f"{name}_link" for name in block_names], f"assets/contexts/stack_diffIK_{seed_input}.json")
 
 if __name__ == "__main__":
     main()
