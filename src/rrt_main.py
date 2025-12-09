@@ -182,13 +182,14 @@ def pick_block(
 if __name__ == "__main__":
     # scenario_stack_file = "scenarios/bimanual_IIWA14_stackbot_assets_and_cameras.scenario.yaml"
     # randomize blocks once in this world
+    rng = np.random.default_rng(seed=1)
     block_numbers = np.random.choice(range(11), size=np.random.choice([4, 5, 6]), replace=False)
     print("This scenario uses blocks:", block_numbers)
     blocks = [f"block{i}" for i in block_numbers]
     NUM_BLOCKS = len(blocks)
 
     scenario = LoadScenario(
-        data=generate_scenario_yaml(blocks)
+        data=generate_scenario_yaml(blocks, rng)
     )
 
     # build a diagram for perception and block randomization
