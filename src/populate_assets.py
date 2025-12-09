@@ -10,7 +10,6 @@ def create_block_sdf(
         mu_dynamic: float = 1.5,
 ) -> str:
 
-
     assert len(pose) == 6, "pose must be 6d"
     assert len(size) == 3, "size must be 3d"
 
@@ -66,6 +65,43 @@ f"""<?xml version="1.0"?>
 </sdf>
 """)
 
+def create_cylinder_sdf(name, radius, length, rgba = [1, 1, 1, 1]):
+    return f"""
+    <?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="{name}">
+    <link name="{name}_link">
+      <visual name="visual">
+        <geometry>
+          <cylinder>
+            <radius>{radius}</radius>
+            <length>{length}</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <diffuse>{" ".join(str(num) for num in rgba)}</diffuse>
+        </material>
+      </visual>
+      <collision name="collision">
+        <geometry>
+          <cylinder>
+            <radius>{radius}</radius>
+            <length>{length}</length>
+          </cylinder>
+        </geometry>
+        <surface>
+            <friction>
+                <ode>
+                    <mu>2.0</mu>
+                    <mu2>1.5</mu2>
+                </ode>
+            </friction>
+        </surface>
+      </collision>
+    </link>
+  </model>
+</sdf>"""
+
 block_color_rgba = np.array([0, 1, 0, 1])
 
 folder = "assets/models"
@@ -80,7 +116,7 @@ for i in range(11):
 
 # I want a floor
 with open(f"{folder}/floor.sdf", "w+") as f:
-    f.write(create_block_sdf("floor", [3, 3, 0.1], rgba=[0.1, 0.1, 0.1, 1]))
+    f.write(create_block_sdf("floor", [4, 4, 0.1], rgba=[0.1, 0.1, 0.1, 1]))
 
 # I want a platform to stack on
 with open(f"{folder}/platform.sdf", "w+") as f:
@@ -89,3 +125,16 @@ with open(f"{folder}/platform.sdf", "w+") as f:
 # I want an iiwa probe
 with open(f"{folder}/probe.sdf", "w+") as f:
     f.write(create_block_sdf("probe", [0.02, 0.02, 0.2]))
+
+
+# round variants
+with open(f"{folder}/round_platform.sdf", "w+") as f:
+    f.write(create_cylinder_sdf("platform", 0.3, 0.05))
+
+with open(f"{folder}/round_floor.sdf", "w+") as f:
+    f.write(create_cylinder_sdf("floor", 2, 0.1, rgba=[0.1, 0.1, 0.1, 1]))
+
+# obstacle
+
+with open(f"{folder}/post.sdf", "w+") as f:
+    f.write(create_block_sdf("post", [0.05, 0.05, 0.5]))
