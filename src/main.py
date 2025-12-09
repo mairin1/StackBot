@@ -25,6 +25,7 @@ from scene_utils import *
 from perception_utils import *
 from planning_utils import *
 from diff_ik import PseudoInverseDiffIK
+from utils import *
 
 def connect_if_present(builder, station, port_name, value):
     try:
@@ -91,7 +92,7 @@ def generate_setup():
     connect_if_present(builder, station, "iiwa.velocity", np.zeros(7))
     connect_if_present(builder, station, "iiwa.feedforward_torque", np.zeros(7))
 
-    return builder, station, meshcat, pc_systems, commander, integrator
+    return builder, station, meshcat, pc_systems, commander, integrator, blocks
 
 def generate_model_point_cloud(block_idx: int):
     N_SAMPLE_POINTS = 1500
@@ -161,7 +162,7 @@ def pick_block(estimated_X_WB, plant, plant_context, diagram, diagram_context, m
 # ENTRY POINT
 
 def main():
-    builder, station, meshcat, pc_systems, commander, integrator = generate_setup()
+    builder, station, meshcat, pc_systems, commander, integrator, block_names = generate_setup()
     plant = station.GetSubsystemByName("plant")
 
     diagram = builder.Build()
@@ -236,6 +237,7 @@ def main():
 
     meshcat.StopRecording()
     meshcat.PublishRecording()
+    save_positions(plant, plant_context, [f"{name}_link" for name in block_names], "assets/contexts/ITWORKSseed114.json")
 
 if __name__ == "__main__":
     main()
