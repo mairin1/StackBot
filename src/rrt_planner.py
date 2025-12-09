@@ -19,8 +19,8 @@ from rrt_utils import *
 def solve_ik_for_pose(
     plant: MultibodyPlant,
     X_WG_target: RigidTransform,
-    theta_bound: float = 0.01 * np.pi,
-    pos_tol: float = 0.015,
+    theta_bound: float = 0.05 * np.pi, # was 0.01
+    pos_tol: float = 0.015, # was 0.015
     q_nominal: np.ndarray | None = None,
 ) -> Tuple[float, ...]:
     """
@@ -87,19 +87,23 @@ def plan_rrt_chain(
         q_goal = q_waypoints[i + 1]
         g_seg = g_waypoints[i]  # constant gripper for this motion segment
 
-        tools = RRT_Connect_tools(sim, start=q_start, goal=q_goal)
+        if np.allclose(q_start, q_goal, atol=1e-8):
+            path_seg = [q_start, q_goal]  # constant arm pose
+            iters = 0
+        else: 
+            tools = RRT_Connect_tools(sim, start=q_start, goal=q_goal)
 
-        # debugging - check straight-line path
-        direct = tools.calc_intermediate_qs_wo_collision(q_start, q_goal, g_seg)
-        # print(f"Segment {i}: direct path length = {len(direct)}")
+            # debugging - check straight-line path
+            direct = tools.calc_intermediate_qs_wo_collision(q_start, q_goal, g_seg)
+            # print(f"Segment {i}: direct path length = {len(direct)}")
 
-        if len(direct) > 1:
-            # print(f"Segment {i}: using direct straight-line path (no RRT needed)")
-            path_seg, iters = direct, 0
-        else:
-            path_seg, iters = rrt_connect_planning(
-                sim, q_start, q_goal, max_iterations=max_iter_segment, gripper_setpoint=g_seg
-            )
+            if len(direct) > 1:
+                # print(f"Segment {i}: using direct straight-line path (no RRT needed)")
+                path_seg, iters = direct, 0
+            else:
+                path_seg, iters = rrt_connect_planning(
+                    sim, q_start, q_goal, max_iterations=max_iter_segment, gripper_setpoint=g_seg
+                )
             # print(f"Segment {i}: RRT iterations = {iters}, path length = {0 if path_seg is None else len(path_seg)}")
 
         if path_seg is None:
@@ -187,7 +191,7 @@ def pick_and_place_traj_rrt_one_block(
         print("Collision status:")
         print("  q_initial:", sim.ExistsCollision(q_initial, GRIPPER_OPEN))
         print("  q_pre:", sim.ExistsCollision(q_pre, GRIPPER_OPEN))
-        print("  q_pick:", sim.ExistsCollision(q_pick, GRIPPER_OPEN))
+        print("  q_pick:", sim.ExistsCollision(q_pick, GRIPPER_CLOSED))
         print("  q_close:", sim.ExistsCollision(q_close, GRIPPER_CLOSED))
         print("  q_lift:", sim.ExistsCollision(q_lift, GRIPPER_CLOSED))
         print("  q_pre_place:", sim.ExistsCollision(q_pre_place, GRIPPER_CLOSED))
@@ -198,7 +202,18 @@ def pick_and_place_traj_rrt_one_block(
         # 0: qi-qpre, 1: qpre-qpick, 2: qpick-qc, 3: qc-ql, 4: ql-qpp, 5: qpp-qp, 6: qp-qo, 7: qo-qpp, 8: qpp-qf
 
     q_waypoints = [q_initial, q_pre, q_pick, q_close, q_lift, q_pre_place, q_place, q_open, q_post_place, q_final]
-    g_waypoints = [GRIPPER_OPEN, GRIPPER_OPEN, GRIPPER_OPEN, GRIPPER_CLOSED, GRIPPER_CLOSED, GRIPPER_CLOSED, GRIPPER_CLOSED, GRIPPER_OPEN, GRIPPER_OPEN, GRIPPER_OPEN]
+    g_waypoints = [   # mapping to arm q0 -> q1 motion
+        GRIPPER_OPEN, # qi-qpre
+        GRIPPER_OPEN, # qpre-qpick
+        GRIPPER_CLOSED, # qpick-qc
+        GRIPPER_CLOSED, # qc-ql
+        GRIPPER_CLOSED, # ql-qpp
+        GRIPPER_CLOSED, # qpp-p
+        GRIPPER_OPEN, # qp-qo
+        GRIPPER_OPEN, # qo-qpp
+        GRIPPER_OPEN, # qpp-qf
+        GRIPPER_OPEN # this is actually never used -- unless we want to start doing linear interpolation between gripper endpoints
+    ]
 
     print("Planning RRT-Connect path...")
     full_q_path, full_g_path, segment_ranges = plan_rrt_chain(sim, q_waypoints, g_waypoints, max_iter_segment=max_rrt_iters)

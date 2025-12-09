@@ -40,22 +40,27 @@ def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, 
     assert len(full_q_path) == len(full_g_path)
 
     # placement related segments
-    place_segments = {5, 6, 7}
+    super_slow_segments = {2, 6}
+    slow_segments = {3, 5, 7}
     
     # segments that can go fast
-    fast_segments = {4, 8}
+    fast_segments = {}
 
     base_dt = 0.05
+    super_slow_factor = 50
     slow_factor = 10.0
     fast_factor = 0.8
     ts_local = [0.0]
     print(segment_ranges)
     for seg_idx, (start, end) in enumerate(segment_ranges):
         num_steps = end - start
-        if seg_idx in place_segments:
+        if seg_idx in slow_segments:
             dt_seg = base_dt * slow_factor
         elif seg_idx in fast_segments:
             dt_seg = base_dt * fast_factor
+        elif seg_idx in super_slow_segments:
+            dt_seg = base_dt * super_slow_factor
+            print("super slow time = ", dt_seg)
         else:
             dt_seg = base_dt
         for _ in range(num_steps):
@@ -146,7 +151,7 @@ def pick_block(
         extents_hat,
         ee_approach_axis="y",
         ee_close_axis="x",
-        z_clearance=0.05
+        z_clearance=0.03
     )
 
     AddMeshcatTriad(meshcat, "X_WB_hat", X_PT=X_WB_hat, length=0.15)
@@ -179,11 +184,16 @@ def pick_block(
 
 
 # Z_BUFFER = 0.05 # to prevent collision of gripper with floor 
+RANDOM_SEED = 114
 if __name__ == "__main__":
-    # scenario_stack_file = "scenarios/bimanual_IIWA14_stackbot_assets_and_cameras.scenario.yaml"
+    # successful_seeds = []
+    # for seed in range(100, 120):
+        # try: 
+            
     # randomize blocks once in this world
-    rng = np.random.default_rng(seed=1)
-    block_numbers = np.random.choice(range(11), size=np.random.choice([4, 5, 6]), replace=False)
+    rng = np.random.default_rng(seed=RANDOM_SEED)
+    num_blocks = rng.choice([4, 5, 6])
+    block_numbers = rng.choice(np.arange(11), size=num_blocks, replace=False)
     print("This scenario uses blocks:", block_numbers)
     blocks = [f"block{i}" for i in block_numbers]
     NUM_BLOCKS = len(blocks)
@@ -223,7 +233,7 @@ if __name__ == "__main__":
     block_poses = get_block_poses(plant, plant_context, blocks)
     # publish once so camera clouds exist
     diagram.ForcedPublish(diagram_context)
-    # input("Hit enter to continue")
+    input("Hit enter to continue") # add this if you want to stop to look at scene before motion planning starts
     meshcat.StartRecording()
 
     # compute platform pose for placing
@@ -248,22 +258,33 @@ if __name__ == "__main__":
         place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h + PLACE_Z_BUFFER
         print("place_z:", place_z)
 
-        full_q_path, full_g_path, segment_ranges = pick_block(
-            estimated_X_WB=est_X_WBs_by_length[stack_level],
-            plant=plant,
-            plant_context=plant_context,
-            meshcat=meshcat,
-            place_xy=place_xy,
-            place_z=place_z,
-            block_poses=block_poses,
-            scenario=scenario
-        )
+        try: # get rid of this later, this is just for testing purposes
+            full_q_path, full_g_path, segment_ranges = pick_block(
+                estimated_X_WB=est_X_WBs_by_length[stack_level],
+                plant=plant,
+                plant_context=plant_context,
+                meshcat=meshcat,
+                place_xy=place_xy,
+                place_z=place_z,
+                block_poses=block_poses,
+                scenario=scenario
+            )
+        except IndexError:
+            continue
 
         # execute that RRT path in a clean execution diagram
         block_poses, duration = execute_rrt_path(full_q_path, full_g_path, scenario, block_poses, meshcat, segment_ranges, time_offset=current_time)
         current_time += duration
-        # input("Finished execution for this block. Press Enter for next (or Ctrl+C to stop)...\n")
+        
+        # input("Finished execution for this block. Press Enter for next (or Ctrl+C to stop)...\n") 
     # once all blocks done, stop and publish the full recording
     meshcat.StopRecording()
     meshcat.PublishRecording()
     input("All blocks done. Press Enter to close Meshcat...\n")
+    #     except:
+    #         continue
+    #     # seed succeeded
+    #     print(f"seed succeeded: {seed}")
+    #     successful_seeds.append(seed)
+    
+    # print(successful_seeds)

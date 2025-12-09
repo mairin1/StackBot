@@ -72,7 +72,7 @@ def create_randomized_block_directives(block_names : list[str], rng : np.random.
     for block_name, coord in zip(block_names, coords):
         x, y = coord
         z = 0.05
-        rotation = np.random.randint(0, 360)
+        rotation = int(rng.integers(0, 360))
 
         directives += block_directive(block_name, [x, y, z], [0, 0, rotation])
 
