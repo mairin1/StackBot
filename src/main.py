@@ -38,7 +38,7 @@ def generate_setup():
     meshcat = StartMeshcat()
     print("Click the link above to open Meshcat in your browser!")
 
-    rng = np.random.default_rng(seed=1)
+    rng = np.random.default_rng(seed=114)
 
     block_numbers = rng.choice(range(11), size=rng.choice([4, 5, 6]), replace=False)
     print("This scenario uses blocks:", block_numbers)
@@ -207,6 +207,12 @@ def main():
         print("platform_half_h = ", platform_half_h)
         print("block_h = ", block_h)
         place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h + PLACE_Z_BUFFER
+
+        # resync integrator to current measured q before planning/executing
+        station_context = diagram.GetMutableSubsystemContext(station, diagram_context)
+        integrator_context = diagram.GetMutableSubsystemContext(integrator, diagram_context)
+        q_meas = station.GetOutputPort("iiwa.position_measured").Eval(station_context)
+        integrator.set_integral_value(integrator_context, q_meas)
 
         # plan using perception
         pose_traj, wsg_traj = pick_block(
