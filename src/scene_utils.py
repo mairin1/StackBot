@@ -154,7 +154,7 @@ def create_obstacle_directives() -> str:
             translation: [{-0.3 if i < 2 else 0.3}, {-0.3 if i % 2 == 0 else 0.3}, 0.25]
     """ for i in range(4))
 
-def generate_scenario_yaml(blocks: list[str], rng = np.random.Generator, obstacle : bool = False) -> str:
+def generate_scenario_yaml(blocks: list[str], rng : np.random.Generator, obstacle : bool = False) -> str:
     directives = f"""
 directives:
     - add_model:
