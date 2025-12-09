@@ -34,7 +34,7 @@ def create_randomized_block_directives(block_names : list[str]) -> str:
 
     def sample_point():
         # must be within 0.8m of the iiwa
-        r = np.random.uniform(0.35, 0.8)
+        r = np.random.uniform(0.5, 0.8)
         theta = np.random.uniform(0, np.pi) # i only want it to be in the positive y side
         
         x = r * np.cos(theta)
