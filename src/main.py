@@ -27,6 +27,7 @@ from perception_utils import *
 from planning_utils import *
 from diff_ik import PseudoInverseDiffIK
 from utils import *
+from eval_utils import *
 
 import argparse
 
@@ -103,7 +104,7 @@ def generate_model_point_cloud(block_idx: int):
     block_mesh = trimesh.load(block_mesh_path.as_posix(), force="mesh")
     sampled_pts = np.asarray(block_mesh.sample(N_SAMPLE_POINTS))
     block_model_cloud = PointCloud(sampled_pts.T)
-    print(f"Loaded model mesh from {block_mesh_path}, sampled {sampled_pts.shape[0]} points")
+    # print(f"Loaded model mesh from {block_mesh_path}, sampled {sampled_pts.shape[0]} points")
     return block_model_cloud
 
 def pick_block(estimated_X_WB, plant, plant_context, diagram, diagram_context, meshcat, pc_systems, place_xy: np.ndarray, place_z: float):
@@ -131,7 +132,7 @@ def pick_block(estimated_X_WB, plant, plant_context, diagram, diagram_context, m
     X_WB_hat = estimated_X_WB[0]
     # extents_hat, _, _ = estimate_extents_along_axes(block_cloud, X_WB_hat)
     extents_hat = 0.06, estimated_X_WB[1], 0.06
-    print("Estimated extents:", extents_hat)
+    # print("Estimated extents:", extents_hat)
 
     # compare to truth (sanity check)
     # err = X_WB_hat.inverse().multiply(X_WB_true)
@@ -212,8 +213,8 @@ def main():
     est_X_WBs_by_length = perceive(point_cloud, meshcat)
 
     for stack_level in range(len(est_X_WBs_by_length)):
-        print("platform_half_h = ", platform_half_h)
-        print("block_h = ", block_h)
+        # print("platform_half_h = ", platform_half_h)
+        # print("block_h = ", block_h)
         place_z = platform_half_h + (stack_level + 1 + 0.5) * block_h + PLACE_Z_BUFFER
 
         # resync integrator to current measured q before planning/executing
@@ -231,7 +232,7 @@ def main():
             meshcat, pc_systems,
             place_xy, place_z
         )
-        print("place_z: ", place_z)
+        # print("place_z: ", place_z)
 
         # set trajectories into commander
         commander.set_trajectories(pose_traj, wsg_traj)
@@ -247,7 +248,10 @@ def main():
     meshcat.PublishRecording()
     yesNo = input("Enter Y to save the final stack poses: ")
     if (yesNo == "Y" or yesNo == "y"):
-        save_positions(plant, plant_context, [f"{name}_link" for name in block_names], f"assets/contexts/stack_diffIK_{seed_input}.json")
+        filename = f"assets/contexts/stack_diffIK_{seed_input}.json"
+        save_positions(plant, plant_context, [f"{name}_link" for name in block_names], filename)
+        print(f"Translation Error: {avg_translation_error(filename)}" )
+        print(f"Rotation Error: {avg_z_rotation_error(filename, 0)}" )
 
 if __name__ == "__main__":
     main()

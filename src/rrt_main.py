@@ -20,10 +20,12 @@ from scene_utils import generate_scenario_yaml, get_block_poses
 from perception_utils import get_point_cloud_from_cameras, perceive
 from planning_utils import design_top_down_grasp
 from utils import *
+from eval_utils import *
 
 from rrt_planner import pick_and_place_traj_rrt_one_block
 
 import argparse
+import json
 
 def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, "RigidTransform"], meshcat, segment_ranges, time_offset: float):
     """
@@ -289,7 +291,22 @@ if __name__ == "__main__":
     meshcat.PublishRecording()
     yesNo = input("Enter Y to save the final stack poses: ")
     if (yesNo == "Y" or yesNo == "y"):
-        save_positions(plant, plant_context, [f"{name}_link" for name in blocks], f"assets/contexts/stack_rrt_{seed_input}.json")
+        filename = f"assets/contexts/stack_rrt_{seed_input}.json"
+        # save_positions(plant, plant_context, [f"{name}_link" for name in blocks], filename)
+        positions = {}
+        for name in block_poses:
+            pose = block_poses[name]
+            translation = pose.translation().tolist()
+            rotation = pose.rotation().ToRollPitchYaw().vector().tolist()
+
+            positions[name] = {
+                "translation" : translation,
+                "rotation" : rotation
+            }
+        with open(filename, "w") as f:
+            json.dump(positions, f)
+        print(f"Translation Error: {avg_translation_error(filename)}" )
+        print(f"Rotation Error: {avg_z_rotation_error(filename, 0)}" )
     input("All blocks done. Press Enter to close Meshcat...\n")
     #     except:
     #         continue
