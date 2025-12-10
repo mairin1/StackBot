@@ -11,6 +11,6 @@ GRIPPER_OPEN = 0.2
 GRIPPER_CLOSED = 0.
 
 PLACE_Z_BUFFER = 0.02 # 0.05 def will work, to prevent collision of gripper with floor -- testing closer for greater stability
-PICK_Z_CLEARANCE = 0.02 # >=0.03 is necessary for IK in some scenes, but more stable if we do closer
+PICK_Z_CLEARANCE = 0.03 # >=0.03 is necessary for IK in some scenes, but more stable if we do closer
 
 SIMULATOR_SETTLING_TIME = 5 # to let blocks setlle after dropping

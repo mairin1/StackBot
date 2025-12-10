@@ -28,7 +28,7 @@ from rrt_planner import pick_and_place_traj_rrt_one_block
 import argparse
 import json
 
-def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, "RigidTransform"], meshcat, segment_ranges, time_offset: float):
+def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, "RigidTransform"], meshcat, segment_ranges, time_offset: float, speedy: bool):
     """
     Build a fresh station for execution and feed the RRT joint/gripper
     trajectories directly into iiwa.position and wsg.position.
@@ -50,11 +50,13 @@ def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, 
     slow_segments = {3, 5, 7}
     
     # segments that can go fast
-    fast_segments = {}
+    fast_segments = {8}
 
-    base_dt = 0.1
+    base_dt = 0.05
+    if speedy:
+        base_dt = 0.005
     super_slow_factor = 5
-    slow_factor = 10.0
+    slow_factor = 50.0
     fast_factor = 0.8
     ts_local = [0.0]
     print(segment_ranges)
@@ -136,7 +138,8 @@ def pick_block(
     place_z: float,
     block_poses: dict[str, "RigidTransform"],
     scenario,
-    avoid_obstacles
+    avoid_obstacles,
+    refine
 ):
     """
     Use perception (estimated_X_WBs) to design the grasp and then call
@@ -185,7 +188,8 @@ def pick_block(
         meshcat=meshcat,
         verbose=True,
         block_poses=block_poses,
-        avoid_obstacles=avoid_obstacles
+        avoid_obstacles=avoid_obstacles,
+        refine=refine
     )
 
     return full_q_path, full_g_path, segment_ranges
@@ -196,16 +200,17 @@ RANDOM_SEED = 116
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--add_obstacles", action="store_true")
+    parser.add_argument("--refine_rrt", action="store_true")
+    parser.add_argument("--speedy", action="store_true")
     parser.add_argument("--seed", type=int, default=116, help="set random seed for repeatability")
     args = parser.parse_args()
     
-    print("using obstacles = ", args.add_obstacles)
+    add_obstacles = args.add_obstacles
+    print("using obstacles = ", add_obstacles)
+    print("refining RRT = ", add_obstacles)
     # successful_seeds = []
     # for seed in range(100, 120):
         # try: 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, help="input seed")
-    args = parser.parse_args()
     seed_input = args.seed if args.seed is not None else 114
 
     # randomize blocks once in this world
@@ -217,7 +222,7 @@ if __name__ == "__main__":
     NUM_BLOCKS = len(blocks)
 
     scenario = LoadScenario(
-        data=generate_scenario_yaml(blocks, rng, obstacle=args.add_obstacles)
+        data=generate_scenario_yaml(blocks, rng, obstacle=add_obstacles)
     )
 
     # build a diagram for perception and block randomization
@@ -287,13 +292,14 @@ if __name__ == "__main__":
                 place_z=place_z,
                 block_poses=block_poses,
                 scenario=scenario,
-                avoid_obstacles=args.add_obstacles
+                avoid_obstacles=args.add_obstacles,
+                refine=args.refine_rrt,
             )
         except IndexError:
             continue
 
         # execute that RRT path in a clean execution diagram
-        block_poses, duration = execute_rrt_path(full_q_path, full_g_path, scenario, block_poses, meshcat, segment_ranges, time_offset=current_time)
+        block_poses, duration = execute_rrt_path(full_q_path, full_g_path, scenario, block_poses, meshcat, segment_ranges, time_offset=current_time, speedy=args.speedy)
         current_time += duration
         
         # input("Finished execution for this block. Press Enter for next (or Ctrl+C to stop)...\n") 
