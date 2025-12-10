@@ -16,25 +16,21 @@ from constants import *
 from rrt_utils import *
 
 
-def solve_ik_for_pose(
+def _solve_ik_single(
     plant: MultibodyPlant,
     X_WG_target: RigidTransform,
-    theta_bound: float = 0.05 * np.pi, # was 0.01
-    pos_tol: float = 0.015, # was 0.015
-    q_nominal: np.ndarray | None = None,
+    theta_bound: float,
+    pos_tol: float,
+    q_nominal_iiwa: np.ndarray | None = None,
+    plant_context=None,  # kept for symmetry, but not used here
 ) -> Tuple[float, ...]:
-    """
-    Solve IK to find a 7-DOF iiwa configuration that reaches X_WG_target.
-    """
-
     world_frame = plant.world_frame()
     gripper_frame = plant.GetFrameByName("body")
 
     ik = InverseKinematics(plant)
-    q_vars = ik.q()[:7]
     prog = ik.prog()
+    q_vars = ik.q()[:7]
 
-    # Orientation constraint
     ik.AddOrientationConstraint(
         frameAbar=world_frame,
         R_AbarA=X_WG_target.rotation(),
@@ -43,7 +39,6 @@ def solve_ik_for_pose(
         theta_bound=theta_bound,
     )
 
-    # Position constraint
     p_WG_target = X_WG_target.translation()
     ik.AddPositionConstraint(
         frameA=world_frame,
@@ -53,17 +48,199 @@ def solve_ik_for_pose(
         p_AQ_upper=p_WG_target + pos_tol * np.ones(3),
     )
 
-    if q_nominal is None:
-        q_nominal = np.zeros(7)
-    prog.AddQuadraticErrorCost(np.eye(7), q_nominal, q_vars)
-    prog.SetInitialGuess(q_vars, q_nominal)
+    if q_nominal_iiwa is None:
+        q_nominal_iiwa = np.zeros(7)
+
+    prog.AddQuadraticErrorCost(np.eye(7), q_nominal_iiwa, q_vars)
+    prog.SetInitialGuess(q_vars, q_nominal_iiwa)
 
     result = Solve(prog)
     if not result.is_success():
-        raise RuntimeError("IK did not succeed for target pose")
+        raise RuntimeError(f"IK failed (theta_bound={theta_bound})")
 
     q_sol = result.GetSolution(q_vars)
     return tuple(float(x) for x in q_sol)
+
+
+def solve_ik_for_pose(
+    plant: MultibodyPlant,
+    X_WG_target: RigidTransform,
+    theta_bound_feasible: float = 0.08 * np.pi,  # coarse
+    theta_bound_refine: float = 0.01 * np.pi,  # tight
+    pos_tol: float = 0.015,
+    q_nominal_iiwa: np.ndarray | None = None,
+    plant_context = None,
+) -> Tuple[float, ...]:
+    """
+    Two-stage IK:
+      1) Find a feasible solution with a looser orientation bound.
+      2) Try to refine with a tighter orientation bound starting from that solution.
+    """
+
+    # stage 1: coarse / feasible solve
+    q_coarse = _solve_ik_single(
+        plant=plant,
+        X_WG_target=X_WG_target,
+        theta_bound=theta_bound_feasible,
+        pos_tol=pos_tol,
+        q_nominal_iiwa=q_nominal_iiwa,
+        plant_context=plant_context,
+    )
+
+    # stage 2: refinement solve with tighter theta_bound, using coarse solution as nominal
+    try:
+        q_refined = _solve_ik_single(
+            plant=plant,
+            X_WG_target=X_WG_target,
+            theta_bound=theta_bound_refine,
+            pos_tol=pos_tol,
+            q_nominal_iiwa=np.array(q_coarse),
+            plant_context=plant_context,
+        )
+        return q_refined
+    except RuntimeError:
+        # Could not satisfy the 0.01*pi bound; fall back to the coarse solution
+        print("Refine IK (theta_bound=0.01π) failed; using 0.03π solution instead.")
+        return q_coarse
+
+
+# def solve_ik_for_pose(
+#     plant: MultibodyPlant,
+#     X_WG_target: RigidTransform,
+#     theta_bound: float = 0.03 * np.pi, # was 0.01
+#     pos_tol: float = 0.015, # was 0.015
+#     q_nominal_iiwa: np.ndarray | None = None,
+#     plant_context = None # here as placeholder to make below code easier
+# ) -> Tuple[float, ...]:
+#     """
+#     Solve IK to find a 7-DOF iiwa configuration that reaches X_WG_target.
+#     """
+
+#     world_frame = plant.world_frame()
+#     gripper_frame = plant.GetFrameByName("body")
+
+#     ik = InverseKinematics(plant)
+#     q_vars = ik.q()[:7]
+#     prog = ik.prog()
+
+#     # Orientation constraint
+#     ik.AddOrientationConstraint(
+#         frameAbar=world_frame,
+#         R_AbarA=X_WG_target.rotation(),
+#         frameBbar=gripper_frame,
+#         R_BbarB=RotationMatrix(),
+#         theta_bound=theta_bound,
+#     )
+
+#     # Position constraint
+#     p_WG_target = X_WG_target.translation()
+#     ik.AddPositionConstraint(
+#         frameA=world_frame,
+#         frameB=gripper_frame,
+#         p_BQ=np.zeros(3),
+#         p_AQ_lower=p_WG_target - pos_tol * np.ones(3),
+#         p_AQ_upper=p_WG_target + pos_tol * np.ones(3),
+#     )
+
+#     if q_nominal_iiwa is None:
+#         q_nominal_iiwa = np.zeros(7)
+#     prog.AddQuadraticErrorCost(np.eye(7), q_nominal_iiwa, q_vars)
+#     prog.SetInitialGuess(q_vars, q_nominal_iiwa)
+
+#     result = Solve(prog)
+#     if not result.is_success():
+#         raise RuntimeError("IK did not succeed for target pose")
+
+#     q_sol = result.GetSolution(q_vars)
+#     return tuple(float(x) for x in q_sol)
+
+def solve_ik_for_pose_collisionavoid(
+    plant: MultibodyPlant,
+    X_WG_target: RigidTransform,
+    plant_context,
+    theta_bound: float = 0.03 * np.pi,
+    pos_tol: float = 0.015,
+    q_nominal_iiwa: np.ndarray | None = None,
+    min_distance: float = 0.01,
+    max_tries: int = 100,
+) -> tuple[float, ...]:
+    """
+    Collision-aware IK for the iiwa gripper pose X_WG_target.
+
+    - Uses world frame and gripper frame "body"
+    - Enforces:
+        * position within pos_tol box
+        * orientation within theta_bound
+        * minimum signed distance between all geometries >= min_distance
+    - Returns a 7-tuple of iiwa joint angles.
+    """
+
+    world_frame = plant.world_frame()
+    gripper_frame = plant.GetFrameByName("body")
+
+    # build IK with a context, so distance queries see the right geometry config
+    ik = InverseKinematics(plant, plant_context)
+    prog = ik.prog()
+    q_vars = ik.q()
+    n_q = len(q_vars)
+
+    # start from current plant positions as default
+    q_nominal_full = plant.GetPositions(plant_context).copy()
+    if q_nominal_iiwa is not None:
+        # overwrite first 7 (assumed iiwa) with provided nominal
+        q_nominal_full[:7] = q_nominal_iiwa
+
+    # quadratic cost to stay near nominal
+    prog.AddQuadraticErrorCost(np.eye(n_q), q_nominal_full, q_vars)
+
+    # POSE CONSTRAINTS ON GRIPPER
+
+    # position: gripper origin within pos_tol box around target translation
+    p_WG = X_WG_target.translation()
+    ik.AddPositionConstraint(
+        frameA=world_frame,
+        frameB=gripper_frame,
+        p_BQ=np.zeros(3),
+        p_AQ_lower=p_WG - pos_tol * np.ones(3),
+        p_AQ_upper=p_WG + pos_tol * np.ones(3),
+    )
+
+    # orientation: bound angle between desired and actual to theta_bound
+    ik.AddOrientationConstraint(
+        frameAbar=world_frame,
+        R_AbarA=X_WG_target.rotation(),  # desired rotation of world
+        frameBbar=gripper_frame,
+        R_BbarB=RotationMatrix(),  # identity in gripper frame
+        theta_bound=theta_bound,
+    )
+
+    # COLLISION (MIN DIST) CONSTRAINT
+    # require that the minimum signed distance between *all* pairs of geometries is at least min_distance (0.01 = 1 cm)
+    ik.AddMinimumDistanceLowerBoundConstraint(min_distance)
+
+    # joint limits for random init guesses
+    lo = plant.GetPositionLowerLimits().copy()
+    hi = plant.GetPositionUpperLimits().copy()
+    for i in range(len(lo)):
+        if (not np.isfinite(lo[i])) or (not np.isfinite(hi[i])) or (hi[i] - lo[i] > 1e6):
+            lo[i], hi[i] = -np.pi, np.pi
+
+    # try multiple random guesses
+    for _ in range(max_tries):
+        q0 = np.random.uniform(lo, hi)
+        # keep nominal iiwa close to what we want (helps convergence)
+        q0[:7] = q_nominal_full[:7]
+        prog.SetInitialGuess(q_vars, q0)
+
+        result = Solve(prog)
+        if result.is_success():
+            q_sol_full = result.GetSolution(q_vars)
+            # update context in case caller wants it consistent
+            plant.SetPositions(plant_context, q_sol_full)
+            # return only iiwa joints
+            return tuple(float(x) for x in q_sol_full[:7])
+
+    raise RuntimeError("Collision-aware IK did not succeed for target pose")
 
 
 def plan_rrt_chain(
@@ -141,6 +318,7 @@ def pick_and_place_traj_rrt_one_block(
         meshcat = None,
         verbose = True,
         block_poses: dict[str, "RigidTransform"] | None = None,
+        avoid_obstacles: bool = False
     ):
     if meshcat is None:
         meshcat = StartMeshcat()
@@ -154,6 +332,10 @@ def pick_and_place_traj_rrt_one_block(
         block_poses=block_poses,
     )
     plant = sim.plant
+    diagram = sim.diagram  # if your class doesn’t expose this, add a .diagram attribute there
+    diagram_context = diagram.CreateDefaultContext()
+    plant_context = plant.GetMyContextFromRoot(diagram_context)
+
     place_xy = np.asarray(place_xy, dtype=float).reshape(2)
 
     p_lift = X_WG_pick.translation().copy()
@@ -176,16 +358,20 @@ def pick_and_place_traj_rrt_one_block(
     X_WG_pre_place = RigidTransform(R_place, p_place + np.array([0.0, 0.0, approach_clearance], dtype=float))
     X_WG_final = X_WG_initial
     
-    q_initial = solve_ik_for_pose(plant, X_WG_initial)
-    q_pre = solve_ik_for_pose(plant, X_WG_pre, q_nominal=np.array(q_initial))
-    q_pick = solve_ik_for_pose(plant, X_WG_pick, q_nominal=np.array(q_pre))
+    if avoid_obstacles:
+        ik_function = solve_ik_for_pose_collisionavoid
+    else:
+        ik_function = solve_ik_for_pose
+    q_initial = ik_function(plant, X_WG_initial, plant_context=plant_context)
+    q_pre = ik_function(plant, X_WG_pre, q_nominal_iiwa=np.array(q_initial), plant_context=plant_context)
+    q_pick = ik_function(plant, X_WG_pick, q_nominal_iiwa=np.array(q_pre), plant_context=plant_context)
     q_close = q_pick
-    q_lift = solve_ik_for_pose(plant, X_WG_lift, q_nominal=np.array(q_close))
-    q_pre_place = solve_ik_for_pose(plant, X_WG_pre_place, q_nominal=np.array(q_lift))
-    q_place = solve_ik_for_pose(plant, X_WG_place, q_nominal=np.array(q_pre_place))
+    q_lift = ik_function(plant, X_WG_lift, q_nominal_iiwa=np.array(q_close), plant_context=plant_context)
+    q_pre_place = ik_function(plant, X_WG_pre_place, q_nominal_iiwa=np.array(q_lift), plant_context=plant_context)
+    q_place = ik_function(plant, X_WG_place, q_nominal_iiwa=np.array(q_pre_place), plant_context=plant_context)
     q_open = q_place
-    q_post_place = solve_ik_for_pose(plant, X_WG_pre_place, q_nominal=np.array(q_open))
-    q_final = solve_ik_for_pose(plant, X_WG_final, q_nominal=np.array(q_open))
+    q_post_place = ik_function(plant, X_WG_pre_place, q_nominal_iiwa=np.array(q_open), plant_context=plant_context)
+    q_final = ik_function(plant, X_WG_final, q_nominal_iiwa=np.array(q_open), plant_context=plant_context)
 
     if verbose:
         print("Collision status:")
