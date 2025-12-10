@@ -1,5 +1,6 @@
 # run from StackBot/ as python src/rrt_main.py --seed 114 (replace with whatever seed you want)
 import numpy as np
+import argparse
 
 from pydrake.all import (
     DiagramBuilder,
@@ -49,8 +50,8 @@ def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, 
     # segments that can go fast
     fast_segments = {}
 
-    base_dt = 0.05
-    super_slow_factor = 50
+    base_dt = 0.1
+    super_slow_factor = 5
     slow_factor = 10.0
     fast_factor = 0.8
     ts_local = [0.0]
@@ -113,7 +114,7 @@ def execute_rrt_path(full_q_path, full_g_path, scenario, block_poses: dict[str, 
 
     context.SetTime(time_offset)
     simulator = Simulator(diagram, context)
-    simulator.AdvanceTo(ts[-1]) # ts[-1] = time_offset+duration here TODO verify!! -> yep
+    simulator.AdvanceTo(ts[-1] + SIMULATOR_SETTLING_TIME) # ts[-1] = time_offset+duration here TODO verify!! -> yep
     print("Finished executing RRT path.")
     updated_block_poses: dict[str, RigidTransform] = {}
     for block_name in block_poses.keys():
@@ -132,7 +133,8 @@ def pick_block(
     place_xy: np.ndarray,
     place_z: float,
     block_poses: dict[str, "RigidTransform"],
-    scenario
+    scenario,
+    avoid_obstacles
 ):
     """
     Use perception (estimated_X_WBs) to design the grasp and then call
@@ -154,7 +156,7 @@ def pick_block(
         extents_hat,
         ee_approach_axis="y",
         ee_close_axis="x",
-        z_clearance=0.03
+        z_clearance=PICK_Z_CLEARANCE
     )
 
     AddMeshcatTriad(meshcat, "X_WB_hat", X_PT=X_WB_hat, length=0.15)
@@ -181,13 +183,21 @@ def pick_block(
         meshcat=meshcat,
         verbose=True,
         block_poses=block_poses,
+        avoid_obstacles=avoid_obstacles
     )
 
     return full_q_path, full_g_path, segment_ranges
 
 
 # Z_BUFFER = 0.05 # to prevent collision of gripper with floor 
+RANDOM_SEED = 116
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--add_obstacles", action="store_true")
+    parser.add_argument("--seed", type=int, default=116, help="set random seed for repeatability")
+    args = parser.parse_args()
+    
+    print("using obstacles = ", args.add_obstacles)
     # successful_seeds = []
     # for seed in range(100, 120):
         # try: 
@@ -205,7 +215,7 @@ if __name__ == "__main__":
     NUM_BLOCKS = len(blocks)
 
     scenario = LoadScenario(
-        data=generate_scenario_yaml(blocks, rng)
+        data=generate_scenario_yaml(blocks, rng, obstacle=args.add_obstacles)
     )
 
     # build a diagram for perception and block randomization
@@ -274,7 +284,8 @@ if __name__ == "__main__":
                 place_xy=place_xy,
                 place_z=place_z,
                 block_poses=block_poses,
-                scenario=scenario
+                scenario=scenario,
+                avoid_obstacles=args.add_obstacles
             )
         except IndexError:
             continue
