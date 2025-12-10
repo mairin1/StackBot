@@ -1,18 +1,18 @@
 {
     "block10_link": {
         "translation" : [0, 0, 0.06],
-        "rotation" : [0, 0, 1.57]
+        "rotation" : [0, 0, 0]
     },
     "block6_link": {
         "translation" : [0, 0, 0.13],
-        "rotation" : [0, 0, 1.57]
+        "rotation" : [0, 0, 0]
     },
     "block4_link": {
         "translation" : [0, 0, 0.2],
-        "rotation" : [0, 0, 1.57]
+        "rotation" : [0, 0, 0]
     },
     "block2_link": {
         "translation" : [0, 0, 0.27],
-        "rotation" : [0, 0, 1.57]
+        "rotation" : [0, 0, 0]
     }
 }
